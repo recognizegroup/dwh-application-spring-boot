@@ -1,29 +1,54 @@
-# README #
+# Recognize DWH Application Bundle - Spring boot version
 
-This README would normally document whatever steps are necessary to get your application up and running.
+This is a Spring boot variant, based upon the dwh-application-symfony-bundle
+For more information, see that bundle
 
-### What is this repository for? ###
+TODO: copied Adapt to Spring Boot style. 
 
-* Quick summary
-* Version
-* [Learn Markdown](https://bitbucket.org/tutorials/markdowndemo)
 
-### How do I get set up? ###
+## Installation
+### Security
+Add the following in your @EnableWebSecurity config class:
+```java
 
-* Summary of set up
-* Configuration
-* Dependencies
-* Database configuration
-* How to run tests
-* Deployment instructions
+    @Autowired
+    private DwhBasicAuthenticationEntryPoint authenticationEntryPoint;
+    @Autowired
+    private DwhAuthenticationFilter dwhAuthenticationFilter;
 
-### Contribution guidelines ###
 
-* Writing tests
-* Code review
-* Other guidelines
+@Override
+protected void configure(HttpSecurity http) throws Exception {
+     ....
+            .and()
+            .httpBasic()
+            .authenticationEntryPoint(authenticationEntryPoint);
+        }
 
-### Who do I talk to? ###
+    @Bean
+    public void configureGlobal(AuthenticationManagerBuilder auth) { 
+            auth.inMemoryAuthentication()
+            .withUser("admin")
+            .password("{noop}password")
+            .roles(Role.ROLE_DWH_BRIDGE);
+        }
 
-* Repo owner or admin
-* Other community or team contact
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }     
+```
+```
+Ensure authentication for DWH-API paths:
+    @RolesAllowed(ROLE.ROLE_DWH_BRIDGE)
+```
+
+### Configuration
+The encrypted token requires a token that is encrypted with the specified encryption.
+```yaml
+recognize_dwh:
+    protocol_version: 1.0.0
+    specification_version: 1.0.0
+    encryption: bcrypt
+    encrypted_token: $2y$12$ADbwlXKfMjsHKayFlBSuLuu02FkrtgzdNWfCOrzWrCR8zkSoNsUfG
+```

@@ -1,0 +1,242 @@
+clone:
+  depth: full # SonarCloud scanner needs the full history to assign issues properly
+pipelines:
+    default:
+        - parallel:
+              - step:
+                    size: 2x
+                    image: openjdk:13-jdk-buster
+                    caches:
+                        - node
+                    environment:
+                        TEST_ELASTICSEARCH: elasticsearch
+                    script:
+                        - ./bitbucket-prepare.sh
+                        - ./wait-for-elastic.sh
+                        - ./gradlew test -x adminBuild
+                    services:
+                        - postgres
+                        - elasticsearch
+                        - chromepdf
+              - step:
+                    image: openjdk:13-jdk-buster
+                    caches:
+                        - node
+                    script:
+                        - ./bitbucket-prepare.sh
+                        - cd admin
+                        - yarn install
+                        - yarn lint
+                        - yarn serve:test &
+                        - bash wait-for-serve.sh
+                        - yarn test --reporter mocha-junit-reporter || yarn test --reporter mocha-junit-reporter
+                    services:
+                        - hub
+                    artifacts:
+                        - admin/test/output
+    branches:
+        develop:
+            - parallel:
+                - step:
+                    name: Sonar on Kotlin code
+                    image: openjdk:13-jdk-buster
+                    size: 2x
+                    caches:
+                      - node
+                      - sonar
+                      - gradle
+                    environment:
+                      TEST_ELASTICSEARCH: elasticsearch
+                    script:
+                      - ./bitbucket-prepare.sh
+                      - ./wait-for-elastic.sh
+                      - ./gradlew -Dsonar.projectName=Paula test jacocoTestReport sonarqube -x adminBuild
+                    services:
+                      - postgres
+                      - elasticsearch
+                      - chromepdf
+                - step:
+                    size: 2x
+                    name: Build docker images
+                    script:
+                      - TENANT=vwinfra bin/docker-push.sh
+                    services:
+                      - docker
+                - step:
+                    size: 2x
+                    name: Build docker images
+                    script:
+                      - TENANT=vwt-sitesurvey bin/docker-push.sh
+                    services:
+                      - docker
+                - step:
+                    size: 2x
+                    name: Build docker images
+                    script:
+                      - TENANT=kcco bin/docker-push.sh
+                    services:
+                      - docker
+            - parallel:
+                - step:
+                    name: Deploy for Infra - Test
+                    deployment: test
+                    script:
+                      - TENANT=vwinfra INGRESS_FILE="kubernetes/ingress-test.yaml" PVC_FILE="kubernetes/pvc-azurefile.yaml" KUBERNETES_TOKEN="$KUBERNETES_TEST_TOKEN" KUBERNETES_NAMESPACE="paula-test" KUBERNETES_SERVER="https://recognize-test-deee025d.hcp.westeurope.azmk8s.io" bin/k8s-deploy.sh
+                - step:
+                    name: Deploy for VWT - Test
+                    deployment: test-vwt
+                    script:
+                      - TENANT=vwt-sitesurvey INGRESS_FILE="kubernetes/ingress-test-vwt-sitesurvey.yaml" PVC_FILE="kubernetes/pvc-azurefile.yaml" KUBERNETES_TOKEN="$KUBERNETES_TEST_VWT_SITESURVEY_TOKEN" KUBERNETES_NAMESPACE="vwt-sitesurvey-test" KUBERNETES_SERVER="https://recognize-test-deee025d.hcp.westeurope.azmk8s.io" bin/k8s-deploy.sh
+                - step:
+                    name: Deploy for VWT KCCO - Test
+                    deployment: test-kcco-vwt
+                    script:
+                      - TENANT=kcco INGRESS_FILE="kubernetes/ingress-test-kcco.yaml" PVC_FILE="kubernetes/pvc-azurefile.yaml" KUBERNETES_TOKEN="$KUBERNETES_TEST_KCCO_TOKEN" KUBERNETES_NAMESPACE="kcco-vwt-test" KUBERNETES_SERVER="https://recognize-test-deee025d.hcp.westeurope.azmk8s.io" bin/k8s-deploy.sh
+        release/*:
+            - step:
+                  size: 2x
+                  script:
+                      - TENANT=vwinfra bin/docker-push.sh
+                  services:
+                      - docker
+            - step:
+                  deployment: staging
+                  trigger: manual
+                  script:
+                      - >
+                        TENANT=vwinfra
+                        PVC_FILE="kubernetes/pvc.yaml"
+                        KUBERNETES_TOKEN="$KUBERNETES_ACC_TOKEN"
+                        KUBERNETES_NAMESPACE="acc-recognize-asset-check"
+                        KUBERNETES_SERVER="https://openshift.verkeer.nu:8443" bin/k8s-deploy.sh
+        release-vwt/*:
+            - step:
+                size: 2x
+                name: Build image - VWT SiteSurvey
+                script:
+                  - TENANT=vwt-sitesurvey bin/docker-push.sh
+                services:
+                  - docker
+            - step:
+                name: Deploy VWT - SiteSurvey
+                deployment: staging-vwt
+                script:
+                  - TENANT=vwt-sitesurvey ELASTICSEARCH_FILE="kubernetes/elasticsearch-aks.yaml" INGRESS_FILE="kubernetes/ingress-acc-vwt.yaml" PVC_FILE="kubernetes/pvc-azurefile.yaml" KUBERNETES_TOKEN="$KUBERNETES_ACC_VWT_SITESURVEY_TOKEN" KUBERNETES_NAMESPACE="vwt-sitesurvey-acc" KUBERNETES_SERVER="https://recognize-accprod-a8ff4578.hcp.westeurope.azmk8s.io" bin/k8s-deploy.sh
+        release-kcco/*:
+            - step:
+                size: 2x
+                script:
+                  - TENANT=kcco bin/docker-push.sh
+                services:
+                  - docker
+            - step:
+                deployment: staging-kcco-vwt
+                script:
+                  - TENANT=kcco ELASTICSEARCH_FILE="kubernetes/elasticsearch-aks.yaml" INGRESS_FILE="kubernetes/ingress-acc-kcco.yaml" PVC_FILE="kubernetes/pvc-azurefile.yaml" KUBERNETES_TOKEN="$KUBERNETES_ACC_KCCO_TOKEN" KUBERNETES_NAMESPACE="kcco-vwt-acc" KUBERNETES_SERVER="https://recognize-accprod-a8ff4578.hcp.westeurope.azmk8s.io" bin/k8s-deploy.sh
+        hotfix/*:
+            - step:
+                  size: 2x
+                  script:
+                      - TENANT=vwinfra bin/docker-push.sh
+                  services:
+                      - docker
+            - step:
+                  deployment: staging-uat
+                  script:
+                      - >
+                        TENANT=vwinfra
+                        PVC_FILE="kubernetes/pvc.yaml"
+                        KUBERNETES_TOKEN="$KUBERNETES_UAT_TOKEN"
+                        KUBERNETES_NAMESPACE="uat-recognize-asset-check"
+                        KUBERNETES_SERVER="https://openshift.verkeer.nu:8443" bin/k8s-deploy.sh
+        master:
+            - step:
+                  size: 2x
+                  script:
+                      - TENANT=vwinfra AZURE_SOURCE_MAPS_STORAGE_ACCOUNT_NAME="$AZURE_SOURCE_MAPS_STORAGE_ACCOUNT_NAME_PROD" AZURE_SOURCE_MAPS_STORAGE_KEY="$AZURE_SOURCE_MAPS_STORAGE_KEY_PROD" bin/docker-push.sh
+                  services:
+                      - docker
+            - step:
+                  deployment: production
+                  trigger: manual
+                  script:
+                      - TENANT=vwinfra PVC_FILE="kubernetes/pvc.yaml" KUBERNETES_TOKEN="$KUBERNETES_PROD_TOKEN" KUBERNETES_NAMESPACE="prod-recognize-asset-check" KUBERNETES_SERVER="https://openshift.verkeer.nu:8443" bin/k8s-deploy.sh
+        master-vwt:
+                - step:
+                    name: Build - VWT SiteSurvey Prod
+                    size: 2x
+                    script:
+                      - export AZURE_SOURCE_MAPS_STORAGE_ACCOUNT_NAME="$AZURE_SOURCE_MAPS_STORAGE_ACCOUNT_NAME_VWT_SITESURVEY_PROD"
+                      - export AZURE_SOURCE_MAPS_STORAGE_KEY="$AZURE_SOURCE_MAPS_STORAGE_KEY_VWT_SITESURVEY_PROD"
+                      - export AZURE_SOURCE_MAPS_STORAGE_CONTAINER_NAME="$AZURE_SOURCE_MAPS_STORAGE_CONTAINER_NAME"
+                      - TENANT=vwt-sitesurvey bin/docker-push.sh
+                    services:
+                      - docker
+                - step:
+                    name: Deploy - VWT Sitesurvey Prod
+                    deployment: production-vwt-sitesurvey
+                    script:
+                      - TENANT=vwt-sitesurvey PVC_FILE="kubernetes/pvc-azurefile.yaml" ELASTICSEARCH_FILE="kubernetes/elasticsearch-aks.yaml" INGRESS_FILE="kubernetes/ingress-prod-vwt-sitesurvey.yaml" KUBERNETES_TOKEN="$KUBERNETES_PROD_VWT_SITESURVEY_TOKEN" KUBERNETES_NAMESPACE="vwt-sitesurvey-prod" KUBERNETES_SERVER="https://recognize-accprod-a8ff4578.hcp.westeurope.azmk8s.io" bin/k8s-deploy.sh
+        master-kcco:
+          - step:
+              size: 2x
+              script:
+                - export DOCKER_REGISTRY=kccoregistry.azurecr.io
+                - export DOCKER_USER=$KCCO_REGISTRY_USERNAME
+                - export DOCKER_PASSWORD=$KCCO_REGISTRY_PASSWORD
+                - export AZURE_SOURCE_MAPS_STORAGE_ACCOUNT_NAME="$AZURE_SOURCE_MAPS_STORAGE_ACCOUNT_NAME_KCCO_PROD"
+                - export AZURE_SOURCE_MAPS_STORAGE_KEY="$AZURE_SOURCE_MAPS_STORAGE_KEY_KCCO_PROD"
+                - export AZURE_SOURCE_MAPS_STORAGE_CONTAINER_NAME="$AZURE_SOURCE_MAPS_STORAGE_CONTAINER_NAME"
+                - TENANT=kcco bin/docker-push.sh
+              services:
+                - docker
+          - step:
+              size: 2x
+              name: Deploy to PROD@KCCO subscription in VWT
+              deployment: production-kcco-vwt
+              script:
+                - pipe: microsoft/azure-web-apps-containers-deploy:1.0.2
+                  variables:
+                    AZURE_APP_ID: $AZURE_APP_ID_KCCO
+                    AZURE_PASSWORD: $AZURE_PASSWORD_KCCO
+                    AZURE_TENANT_ID: be36ab0a-ee39-47de-9356-a8a501a9c832
+                    AZURE_RESOURCE_GROUP: rec-vwt-kcco-prod
+                    AZURE_APP_NAME: assetcheck-kcco
+                    DOCKER_CUSTOM_IMAGE_NAME: kccoregistry.azurecr.io/recognize/paula:kcco-$BITBUCKET_COMMIT
+                    DEBUG: 'true'
+definitions:
+    caches:
+        sonar: ~/.sonar/cache
+    services:
+        postgres:
+            image: mdillon/postgis:9.6-alpine
+            memory: 512
+            environment:
+                POSTGRES_DB: paula
+                POSTGRES_USER: paula
+                POSTGRES_PASSWORD: paula
+        hub:
+            image: selenium/standalone-chrome
+            memory: 1024
+            environment:
+                GRID_MAX_SESSION: "20"
+                GRID_TIMEOUT: "30000"
+                GRID_BROWSER_TIMEOUT: "30000"
+                GRID_NEW_SESSION_WAIT_TIMEOUT: "30000"
+                GRID_CLEAN_UP_CYCLE: "20000"
+                HUB_PORT_4444_TCP_PORT: "4444"
+                HUB_PORT_4444_TCP_ADDR: hub
+                NODE_MAX_INSTANCES: "10"
+                NODE_MAX_SESSION: "16"
+        elasticsearch:
+            image: yanx1/elasticsearch-single-node-7.9.2:latest
+            memory: 1024
+            environment:
+                ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+        chromepdf:
+            image: browserless/chrome
+            memory: 512
+            environment:
+                TOKEN: "secret-pdf-token"
+        docker:
+            memory: 5500
