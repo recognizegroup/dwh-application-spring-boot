@@ -22,9 +22,6 @@ public class FieldMapping implements Mapping {
 
     private Map<String, String> options;
 
-    /**
-     * @var array|DataTransformationInterface[]
-     */
     private List<DataTransformation> transformations;
 
     private Mapping mapping;
@@ -45,9 +42,6 @@ public class FieldMapping implements Mapping {
         this.mapping = mapping;
     }
 
-    /**
-     * @return string
-     */
     public String getSerializedName() {
         return NameHelper.camelToSnake((String) getOption("map_to", name));
     }
@@ -56,18 +50,11 @@ public class FieldMapping implements Mapping {
         return Optional.ofNullable(( String) getOption("array_type", null));
     }
 
-    /**
-     * @return string|null
-     */
     public Optional<Class<?>> getParent() {
         return Optional.ofNullable((Class<?>) getOption("parent", null));
     }
 
-    /**
-     * @return EntityMapping|FieldMapping|null
-     */
     public Mapping getEntryMapping() {
-//        return $this -> options['entry_mapping'] ? ? null;
         return mapping;
     }
 
