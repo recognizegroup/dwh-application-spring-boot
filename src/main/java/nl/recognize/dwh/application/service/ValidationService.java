@@ -1,6 +1,5 @@
 package nl.recognize.dwh.application.service;
 
-import lombok.RequiredArgsConstructor;
 import nl.recognize.dwh.application.loader.ClassPropertyAccessor;
 import nl.recognize.dwh.application.loader.EntityLoader;
 import nl.recognize.dwh.application.schema.EntityMapping;
@@ -11,30 +10,31 @@ import org.springframework.stereotype.Service;
 import java.util.*;
 
 @Service
-@RequiredArgsConstructor
 public class ValidationService {
     private final DocumentationService documentationService;
 
-    private final Map<String, EntityLoader> loaders;
+    public ValidationService(DocumentationService documentationService) {
+        this.documentationService = documentationService;
+    }
 
     /**
      * @return array
      */
-    public List<String> validate() {
+    public List<String> validate(List<EntityLoader> loaders) {
         List<String> errors = new ArrayList<>();
 
-        for (EntityLoader loader : loaders.values()) {
+        for (EntityLoader loader : loaders) {
             validateMapping(loader.getEntityMapping(), errors);
         }
 
-        validateDocumentation(errors);
+        validateDocumentation(loaders, errors);
 
         return errors;
     }
 
     private void validateMapping(EntityMapping mapping, List<String> errors) {
-        Class<?> entityClass = mapping.getClass();
         try {
+            Class<?> entityClass = Class.forName(mapping.getClassName());
             Object instance = entityClass.getDeclaredConstructor().newInstance();
 
             for (FieldMapping fieldMapping : mapping.getFields()) {
@@ -68,13 +68,13 @@ public class ValidationService {
                     instance = parent.get().getDeclaredConstructor().newInstance();
                     validateField(instance, (FieldMapping) entryMapping, errors);
                 } catch (Exception e) {
-                    throw new IllegalStateException("Wrog state");
+                    throw new IllegalStateException("Wrong state");
                 }
             }
         }
     }
 
-    private void validateDocumentation(List<String> errors) {
+    private void validateDocumentation(List<EntityLoader> loaders, List<String> errors) {
         try {
             documentationService.generate(loaders);
         } catch (Exception exception) {

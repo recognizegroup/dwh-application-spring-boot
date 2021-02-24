@@ -1,15 +1,9 @@
 package nl.recognize.dwh.application.model;
 
-import lombok.Builder;
-import lombok.Getter;
-
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
-@Getter
-@Builder
 public class Filter {
     public static final String OPERATOR_GREATER_THAN = "gt";
     public static final String OPERATOR_GREATER_OR_EQUAL_THAN = "geq";
@@ -29,9 +23,37 @@ public class Filter {
 
     private String queryParameter;
 
-    private Optional<String> field;
+    private String field;
 
     private String type;
 
     private boolean required;
+
+    public Filter(List<String> operators, String queryParameter, String field, String type, boolean required) {
+        this.operators = operators;
+        this.queryParameter = queryParameter;
+        this.field = field;
+        this.type = type;
+        this.required = required;
+    }
+
+    public List<String> getOperators() {
+        return operators;
+    }
+
+    public String getQueryParameter() {
+        return queryParameter;
+    }
+
+    public String getField() {
+        return field;
+    }
+
+    public String getType() {
+        return type;
+    }
+
+    public boolean isRequired() {
+        return required;
+    }
 }

@@ -1,14 +1,10 @@
 package nl.recognize.dwh.application.schema;
 
-import lombok.Builder;
-import lombok.Getter;
 import nl.recognize.dwh.application.util.NameHelper;
 import nl.recognize.dwh.application.model.DataTransformation;
 
 import java.util.*;
 
-@Getter
-@Builder
 public class FieldMapping implements Mapping {
     public static final String TYPE_ARRAY = "array";
     public static final String TYPE_OBJECT = "object";
@@ -32,6 +28,22 @@ public class FieldMapping implements Mapping {
     private List<DataTransformation> transformations;
 
     private Mapping mapping;
+
+    public FieldMapping(String name, String type) {
+        this.name = name;
+        this.type = type;
+        this.options = Collections.emptyMap();
+        this.transformations = Collections.emptyList();
+        this.mapping = null;
+    }
+
+    public FieldMapping(String name, String type, Map<String, String> options, List<DataTransformation> transformations, Mapping mapping) {
+        this.name = name;
+        this.type = type;
+        this.options = options;
+        this.transformations = transformations;
+        this.mapping = mapping;
+    }
 
     /**
      * @return string
@@ -66,4 +78,19 @@ public class FieldMapping implements Mapping {
         return defaultValue;
     }
 
+    public String getName() {
+        return name;
+    }
+
+    public String getType() {
+        return type;
+    }
+
+    public List<DataTransformation> getTransformations() {
+        return transformations;
+    }
+
+    public Map<String, String> getOptions() {
+        return options;
+    }
 }

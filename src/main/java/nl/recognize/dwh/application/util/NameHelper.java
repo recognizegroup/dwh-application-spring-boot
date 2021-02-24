@@ -21,7 +21,7 @@ public class NameHelper
         String pluralName = name;
         String singularName = pluralName;
 
-        if (name.substring(name.length() -1).equals("'s")) {
+        if (!name.endsWith("s")) {
             pluralName += "List";
         } else {
             singularName = name.substring(0, name.length() -1);

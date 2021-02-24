@@ -3,12 +3,13 @@ package nl.recognize.dwh.application.rest;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import io.swagger.v3.core.util.Json;
 import io.swagger.v3.oas.models.OpenAPI;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import nl.recognize.dwh.application.loader.EntityLoader;
 import nl.recognize.dwh.application.model.*;
 import nl.recognize.dwh.application.security.Role;
 import nl.recognize.dwh.application.service.DocumentationService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContext;
@@ -16,23 +17,40 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import javax.annotation.security.RolesAllowed;
 import javax.servlet.http.HttpServletRequest;
 import javax.websocket.server.PathParam;
 import java.util.*;
 
-@Controller
-@RequiredArgsConstructor
-@Slf4j
-public abstract class AbstractDwhApiController {
+@RestController
+@RequestMapping(path = "/api/dwh")
+public class DwhApiController {
+
+    private static final Logger log = LoggerFactory.getLogger(DwhApiController.class);
+
     private static final String PAGE_PARAMETER = "page";
     private static final int PAGE_DEFAULT_VALUE = 1;
     private static final String LIMIT_PARAMETER = "limit";
     private static final int LIMIT_DEFAULT_VALUE = 25;
     private static final int LIMIT_MAX_VALUE = 50;
+
+    private final String protocolVersion;
     private final DocumentationService documentationService;
-    private final Map<String, EntityLoader> entityTypes = new HashMap<>();
+
+    private final List<EntityLoader> entityLoaders;
+
+    public DwhApiController(
+            @Value("${nl.recognize.dwh.application.protocol.version:1.0.0}") String protocolVersion,
+            DocumentationService documentationService,
+            List<EntityLoader> entityLoaders
+) {
+        this.protocolVersion = protocolVersion;
+        this.documentationService = documentationService;
+        this.entityLoaders = entityLoaders;
+    }
 
     @GetMapping(path = "/{type}")
     @RolesAllowed(Role.ROLE_DWH_BRIDGE)
@@ -48,7 +66,7 @@ public abstract class AbstractDwhApiController {
 
             ListOptions options = buildListOptions(pageParameter, limitParameter, filters);
 
-            return ResponseEntity.ok(loader.fetchList(options));
+            return ResponseEntity.ok(fetchList(loader, options));
         } catch (EntityNotFoundException ex) {
             log.warn("Unable to find entity", ex);
             return ResponseEntity.notFound().build();
@@ -71,7 +89,7 @@ public abstract class AbstractDwhApiController {
             List<RequestFilter> filters = buildFilters(request);
             DetailOptions options = buildDetailOptions(id, filters);
 
-            return ResponseEntity.ok(loader.fetchDetail(options));
+            return ResponseEntity.ok(fetchDetails(loader, options));
         } catch (EntityNotFoundException ex) {
             log.warn("Unable to find entity", ex);
             return ResponseEntity.notFound().build();
@@ -80,13 +98,9 @@ public abstract class AbstractDwhApiController {
 
     @GetMapping(path = "/")
     public ResponseEntity<String> definitionAction() throws JsonProcessingException {
-        OpenAPI documentation = documentationService.generate(entityTypes);
+        OpenAPI documentation = documentationService.generate(entityLoaders);
 
         return ResponseEntity.ok(Json.mapper().writeValueAsString(documentation));
-    }
-
-    protected void registerEntityType(String type, EntityLoader loader) {
-        entityTypes.put(type, loader);
     }
 
     private ListOptions buildListOptions(
@@ -102,13 +116,7 @@ public abstract class AbstractDwhApiController {
 
         DwhUser user = getUser();
 
-        return ListOptions
-                .builder()
-                .tenant(user.getUuid())
-                .page(page)
-                .limit(limit)
-                .filters(filters)
-                .build();
+        return new ListOptions(user.getUuid(), filters, page, limit);
     }
 
     private DetailOptions buildDetailOptions(
@@ -117,12 +125,7 @@ public abstract class AbstractDwhApiController {
     ) {
         DwhUser user = getUser();
 
-        return DetailOptions
-                .builder()
-                .identifier(id)
-                .tenant(user.getUuid())
-                .filters(filters)
-                .build();
+        return new DetailOptions(user.getUuid(), filters, id);
     }
 
     private List<RequestFilter> buildFilters(
@@ -134,15 +137,11 @@ public abstract class AbstractDwhApiController {
         for (Map.Entry<String, String[]> entry : parameters.entrySet()) {
             String fieldName = entry.getKey();
             String[] operators = entry.getValue();
+            log.warn("Filter operator: {} -> {}", fieldName, operators);
             for (String operator : operators) {
                 if (Filter.OPERATORS_ALL.contains(operator)) {
                     filters.add(
-                            RequestFilter
-                                    .builder()
-                                    .field(fieldName)
-                                    .operator(operator)
-                                    .value("todogerke") // value zit achter de operator, zie PHP code
-                                    .build()
+                            new RequestFilter(fieldName, operator, "todogerke")
                     );
                 }
             }
@@ -152,10 +151,10 @@ public abstract class AbstractDwhApiController {
     }
 
     private EntityLoader getEntityLoader(String type) throws EntityNotFoundException {
-        if (entityTypes.containsKey(type)) {
-            return entityTypes.get(type);
-        }
-        throw new EntityNotFoundException(String.format("Requested entity type %s not registered.", type));
+        return entityLoaders
+                .stream()
+                .filter(entityLoader -> entityLoader.getType().equals(type))
+                .findAny().orElseThrow(() -> new EntityNotFoundException(String.format("Requested entity type %s not registered.", type)));
     }
 
     private DwhUser getUser() {
@@ -165,5 +164,17 @@ public abstract class AbstractDwhApiController {
         }
         log.warn("No active security context for DWH");
         throw new AccessDeniedException("DWH");
+    }
+
+    private ProtocolResponse<List<Map<String, Object>>> fetchList(EntityLoader loader, ListOptions options) {
+        ProtocolResponse<List<Map<String, Object>>> response = loader.fetchList(options);
+        response.getMetadata().setProtocolVersion(protocolVersion);
+        return response;
+    }
+
+    private ProtocolResponse<Object> fetchDetails(EntityLoader loader, DetailOptions options) throws EntityNotFoundException {
+        ProtocolResponse<Object> response = loader.fetchDetail(options);
+        response.getMetadata().setProtocolVersion(protocolVersion);
+        return response;
     }
 }

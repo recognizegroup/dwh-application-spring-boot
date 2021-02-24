@@ -1,14 +1,22 @@
 package nl.recognize.dwh.application.model;
 
-import lombok.Getter;
-import lombok.experimental.SuperBuilder;
-
 import java.util.List;
 
-@Getter
-@SuperBuilder
 public class BaseOptions {
-    private String tenant;
 
+    private String tenant;
     private List<RequestFilter> filters;
+
+    public BaseOptions(String tenant, List<RequestFilter> filters) {
+        this.tenant = tenant;
+        this.filters = filters;
+    }
+
+    public String getTenant() {
+        return tenant;
+    }
+
+    public List<RequestFilter> getFilters() {
+        return filters;
+    }
 }

@@ -10,7 +10,12 @@ import java.util.Map;
 public interface EntityLoader {
     ProtocolResponse<List<Map<String, Object>>> fetchList(ListOptions listOptions);
 
-    Object fetchDetail(DetailOptions detailOptions) throws EntityNotFoundException;
+    ProtocolResponse<Object> fetchDetail(DetailOptions detailOptions) throws EntityNotFoundException;
+
+    /**
+     * Gets the required type
+     */
+    String getType();
 
     /**
      * Restricts access to resources to a specific tenant
@@ -32,7 +37,6 @@ public interface EntityLoader {
     List<Filter> getFilters();
 
     /**
-     * TODO: verjava-en
      * <p>
      * Translates database result to schema. How it works:
      * - Every entity is mapped FROM the database to a JSON response

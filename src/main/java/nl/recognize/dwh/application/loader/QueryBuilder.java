@@ -8,4 +8,8 @@ public interface QueryBuilder {
     void addPredicate(Filter baseFilter, String operator, Object value);
 
     Query createQuery();
+
+    void setIdentifier(String idColumn, String identifier);
+
+    Long getCount();
 }

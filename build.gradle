@@ -1,7 +1,7 @@
 buildscript {
     ext {
         springBootVersion = '2.4.2'
-        lombokVersion = '1.18.12'
+        springSecurityVersion = '5.4.2'
         javalinOpenApiVersion = '3.13.3'
     }
     repositories {
@@ -9,7 +9,12 @@ buildscript {
     }
 }
 
-apply plugin: 'java'
+plugins {
+    id 'io.spring.dependency-management' version '1.0.11.RELEASE'
+    id 'java'
+}
+
+
 sourceCompatibility = 13.0
 targetCompatibility = 13.0
 
@@ -19,16 +24,13 @@ repositories {
 }
 
 dependencies {
-    compile("org.springframework.boot:spring-boot-starter-web:$springBootVersion")
-    compile("org.springframework.boot:spring-boot-starter-security:$springBootVersion")
-    compile("org.springframework.boot:spring-boot-starter-data-jpa:$springBootVersion")
+    compile("org.springframework.boot:spring-boot-starter-web:${springBootVersion}")
+    compile("org.springframework.boot:spring-boot-starter-security:${springBootVersion}")
+    compile("org.springframework.boot:spring-boot-starter-data-jpa:${springBootVersion}")
     compile("io.javalin:javalin-openapi:$javalinOpenApiVersion")
-    compileOnly "org.projectlombok:lombok:$lombokVersion"
-    annotationProcessor "org.projectlombok:lombok:$lombokVersion"
 
-    testCompile("org.springframework.boot:spring-boot-starter-test:$springBootVersion")
-    testCompileOnly "org.projectlombok:lombok:$lombokVersion"
-    testAnnotationProcessor "org.projectlombok:lombok:$lombokVersion"
+    testCompile("org.springframework.boot:spring-boot-starter-test:${springBootVersion}")
+    testCompile("org.springframework.security:spring-security-test:${springSecurityVersion}")
 }
 
 jar {

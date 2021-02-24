@@ -1,15 +1,16 @@
 package nl.recognize.dwh.application.loader;
 
-import lombok.RequiredArgsConstructor;
 import nl.recognize.dwh.application.model.*;
 import nl.recognize.dwh.application.rest.EntityNotFoundException;
 import nl.recognize.dwh.application.schema.EntityMapping;
 import nl.recognize.dwh.application.schema.FieldMapping;
 import nl.recognize.dwh.application.schema.Mapping;
 import nl.recognize.dwh.application.service.DataPipelineService;
-import org.springframework.beans.factory.annotation.Value;
 
-import javax.persistence.*;
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+import javax.persistence.PersistenceContext;
+import javax.persistence.Query;
 import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.CriteriaQuery;
 import javax.persistence.criteria.Predicate;
@@ -19,7 +20,6 @@ import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
-@RequiredArgsConstructor
 public abstract class AbstractEntityLoader implements EntityLoader {
     private final DataPipelineService dataPipelineService;
     private List<String> allowedOperators = Filter.OPERATORS_ALL;
@@ -27,11 +27,8 @@ public abstract class AbstractEntityLoader implements EntityLoader {
     @PersistenceContext
     private EntityManager entityManager;
 
-    private String protocolVersion;
-
-    public AbstractEntityLoader(@Value("recognize.dwh_application.protocol_version") String protocolVersion, DataPipelineService dataPipelineService) {
+    public AbstractEntityLoader(DataPipelineService dataPipelineService) {
         this.dataPipelineService = dataPipelineService;
-        this.protocolVersion = protocolVersion;
     }
 
     @Transactional
@@ -40,10 +37,7 @@ public abstract class AbstractEntityLoader implements EntityLoader {
 
         applyFilters(queryBuilder, listOptions.getFilters());
 
-        // TODO: naar count query
-        int total = queryBuilder.createQuery()
-                .getResultList()
-                .size();
+        Long total = queryBuilder.getCount();
 
         List<Object> results = queryBuilder.createQuery()
                 .setMaxResults(listOptions.getLimit())
@@ -55,9 +49,7 @@ public abstract class AbstractEntityLoader implements EntityLoader {
 
         List<Map<String, Object>> mapped = mapList(results, requestFilters);
 
-        Map<String, String> metadata = createMetadata(listOptions, total);
-
-        return new ProtocolResponse<>(metadata, mapped);
+        return new ProtocolResponse<>(new Metadata(listOptions, total), mapped);
     }
 
     public ProtocolResponse<Object> fetchDetail(DetailOptions detailOptions) throws EntityNotFoundException {
@@ -74,9 +66,8 @@ public abstract class AbstractEntityLoader implements EntityLoader {
             EntityMapping mapping = getEntityMapping();
 
             Map<String, Object> mapped = mapEntity(result, mapping, detailOptions.getFilters());
-            Map<String, String> metadata = createMetadata(detailOptions);
 
-            return new ProtocolResponse<>(metadata, mapped);
+            return new ProtocolResponse<>(new Metadata(detailOptions), mapped);
         } catch (NoResultException ex) {
             throw new EntityNotFoundException("No entity found with identifier " + detailOptions.getIdentifier());
         }
@@ -141,36 +132,34 @@ public abstract class AbstractEntityLoader implements EntityLoader {
     private Map<String, Object> mapEntity(Object entity, EntityMapping mapping, List<RequestFilter> usedFilters) {
         Map<String, Object> result = new HashMap<>();
 
+        entity = dataPipelineService.apply(entity, mapping.getTransformations());
+
         for (FieldMapping field : mapping.getFields()) {
             final String serializedName = field.getSerializedName();
             result.put(serializedName, mapField(entity, field, usedFilters));
         }
 
-        return dataPipelineService.apply(result, mapping.getTransformations());
+        return result;
     }
 
     private Object mapField(Object entity, FieldMapping field, List<RequestFilter> usedFilters) {
         String name = field.getName();
         String type = field.getType();
 
-        // boolean hasCustomClosure = field.getOptions().containsKey("value"); TODO: wat is dat??
-//        if (!hasCustomClosure &&
-                if (!ClassPropertyAccessor.isReadable(entity, name)) {
+        boolean hasCustomClosure = field.getOptions().containsKey("value");
+        if (!hasCustomClosure && !ClassPropertyAccessor.isReadable(entity, name)) {
             throw new IllegalStateException(String.format("Field with name %s is not readable on entity", name));
         }
 
         List<DataTransformation> transformations = field.getTransformations();
 
-        Map<String, Object> unprocessed = new HashMap<>();
-        unprocessed.put(name,
-                // TODO: hasCustom...
-//                hasCustomClosure
-//                ? mapField(field.getOptions().get("value"), usedFilters)
-//                :
-                ClassPropertyAccessor.getValue(entity, name)
-        );
+        Object unprocessed =
+                hasCustomClosure
+                        ? field.getOptions().get("value")
+                        :
+                        ClassPropertyAccessor.getValue(entity, name);
 
-        Map<String, Object> value = this.dataPipelineService.apply(unprocessed, transformations);
+        Object value = this.dataPipelineService.apply(unprocessed, transformations);
 
         if (Arrays.asList(FieldMapping.TYPE_ENTITY, FieldMapping.TYPE_ARRAY).contains(type)) {
             Optional<String> arrayType = field.getArrayType();
@@ -203,8 +192,8 @@ public abstract class AbstractEntityLoader implements EntityLoader {
 
                 } else {
                     return mapping instanceof EntityMapping
-                                    ? mapEntity(value, (EntityMapping) mapping, usedFilters)
-                                    : mapField(value, (FieldMapping) mapping, usedFilters);
+                            ? mapEntity(value, (EntityMapping) mapping, usedFilters)
+                            : mapField(value, (FieldMapping) mapping, usedFilters);
                 }
             }
         } else {
@@ -212,7 +201,7 @@ public abstract class AbstractEntityLoader implements EntityLoader {
         }
     }
 
-    private QueryBuilder createQueryBuilder()  {
+    private QueryBuilder createQueryBuilder() {
         QueryBuilder queryBuilder = new QueryBuilderImpl();
 
         applyTenant(queryBuilder);
@@ -220,27 +209,12 @@ public abstract class AbstractEntityLoader implements EntityLoader {
         return queryBuilder;
     }
 
-    private Map<String, String> createMetadata(ListOptions listOptions, int total) {
-        Map<String, String> metadata = createMetadata(listOptions);
-        metadata.put("page", "" + listOptions.getPage());
-        metadata.put("limit", "" + listOptions.getLimit());
-        metadata.put("total", "" + total);
-
-        return metadata;
-    }
-
-    private Map<String, String> createMetadata(BaseOptions detailOptions) {
-        Map<String, String> metadata = new HashMap<>();
-        metadata.put("protocol", protocolVersion);
-
-        return metadata;
-    }
-
     private class QueryBuilderImpl implements QueryBuilder {
 
         private final CriteriaBuilder criteriaBuilder;
         private final CriteriaQuery<Object> criteriaQuery;
         private final Root<?> root;
+        private final Class<?> usedClass;
         private final List<Predicate> predicates = new ArrayList<>();
 
         public QueryBuilderImpl(
@@ -248,35 +222,68 @@ public abstract class AbstractEntityLoader implements EntityLoader {
             this.criteriaBuilder = entityManager.getCriteriaBuilder();
             this.criteriaQuery = criteriaBuilder.createQuery();
 
-            Class<?> usedClass;
             try {
                 usedClass = Class.forName(getEntityType());
             } catch (ClassNotFoundException e) {
                 throw new IllegalStateException("Unknown class", e);
             }
             this.root = criteriaQuery.from(usedClass);
+            this.criteriaQuery.select(root);
         }
 
         @Override
         public void addPredicate(Filter baseFilter, String operator, Object value) {
-            if (baseFilter.getField().isEmpty()) {
+            if (baseFilter.getField() == null) {
                 throw new IllegalStateException("No field present");
             }
+            // TODO: non-int types..
             switch (operator) {
                 case Filter.OPERATOR_EQUAL:
-                    predicates.add(criteriaBuilder.equal(root.get(baseFilter.getField().get()), value));
+                    predicates.add(criteriaBuilder.equal(root.get(baseFilter.getField()), value));
                     break;
                 case Filter.OPERATOR_GREATER_OR_EQUAL_THAN:
-                    predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get(baseFilter.getField().get()), (Integer) value));
+                    if (value instanceof Integer) {
+                        predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get(baseFilter.getField()), (Integer) value));
+                    } else if (value instanceof Long) {
+                        predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get(baseFilter.getField()), (Long) value));
+                    } else if (value instanceof ZonedDateTime) {
+                        predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get(baseFilter.getField()), (ZonedDateTime) value));
+                    } else {
+                        predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get(baseFilter.getField()), (String) value));
+                    }
                     break;
                 case Filter.OPERATOR_GREATER_THAN:
-                    predicates.add(criteriaBuilder.greaterThan(root.get(baseFilter.getField().get()), (Integer) value));
+                    if (value instanceof Integer) {
+                        predicates.add(criteriaBuilder.greaterThan(root.get(baseFilter.getField()), (Integer) value));
+                    } else if (value instanceof Long) {
+                        predicates.add(criteriaBuilder.greaterThan(root.get(baseFilter.getField()), (Long) value));
+                    } else if (value instanceof ZonedDateTime) {
+                        predicates.add(criteriaBuilder.greaterThan(root.get(baseFilter.getField()), (ZonedDateTime) value));
+                    } else {
+                        predicates.add(criteriaBuilder.greaterThan(root.get(baseFilter.getField()), (String) value));
+                    }
                     break;
                 case Filter.OPERATOR_LESS_OR_EQUAL_THAN:
-                    predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get(baseFilter.getField().get()), (Integer) value));
+                    if (value instanceof Integer) {
+                        predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get(baseFilter.getField()), (Integer) value));
+                    } else if (value instanceof Long) {
+                        predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get(baseFilter.getField()), (Long) value));
+                    } else if (value instanceof ZonedDateTime) {
+                        predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get(baseFilter.getField()), (ZonedDateTime) value));
+                    } else {
+                        predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get(baseFilter.getField()), (String) value));
+                    }
                     break;
                 case Filter.OPERATOR_LESS_THAN:
-                    predicates.add(criteriaBuilder.lessThan(root.get(baseFilter.getField().get()), (Integer) value));
+                    if (value instanceof Integer) {
+                        predicates.add(criteriaBuilder.lessThan(root.get(baseFilter.getField()), (Integer) value));
+                    } else if (value instanceof Long) {
+                        predicates.add(criteriaBuilder.lessThan(root.get(baseFilter.getField()), (Long) value));
+                    } else if (value instanceof ZonedDateTime) {
+                        predicates.add(criteriaBuilder.lessThan(root.get(baseFilter.getField()), (ZonedDateTime) value));
+                    } else {
+                        predicates.add(criteriaBuilder.lessThan(root.get(baseFilter.getField()), (String) value));
+                    }
                     break;
                 default:
                     throw new IllegalStateException("Unknown operator " + operator);
@@ -285,13 +292,28 @@ public abstract class AbstractEntityLoader implements EntityLoader {
 
         @Override
         public Query createQuery() {
+            CriteriaQuery<Long> query = criteriaBuilder.createQuery(Long.class);
+            query.select(criteriaBuilder.count(query.from(usedClass)));
+
             return entityManager.createQuery(criteriaQuery.where(getPredicates()));
+        }
+
+        @Override
+        public Long getCount() {
+            CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
+            CriteriaQuery<Long> query = criteriaBuilder.createQuery(Long.class);
+            query.select(criteriaBuilder.count(query.from(usedClass)));
+            return entityManager.createQuery(query.where(getPredicates())).getSingleResult();
+        }
+
+        @Override
+        public void setIdentifier(String idColumn, String identifier) {
+            predicates.add(criteriaBuilder.equal(root.get(idColumn), identifier));
         }
 
         private Predicate[] getPredicates() {
             return predicates.toArray(new Predicate[0]);
         }
-
     }
 
 }

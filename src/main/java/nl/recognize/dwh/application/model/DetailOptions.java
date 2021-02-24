@@ -1,10 +1,16 @@
 package nl.recognize.dwh.application.model;
 
-import lombok.Getter;
-import lombok.experimental.SuperBuilder;
+import java.util.List;
 
-@Getter
-@SuperBuilder
 public class DetailOptions extends BaseOptions {
     private String identifier;
+
+    public DetailOptions(String tenant, List<RequestFilter> filters, String identifier) {
+        super(tenant, filters);
+        this.identifier = identifier;
+    }
+
+    public String getIdentifier() {
+        return identifier;
+    }
 }
