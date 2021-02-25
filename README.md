@@ -22,14 +22,21 @@ Add the following in your @EnableWebSecurity config class:
     private DwhBasicAuthenticationEntryPoint authenticationEntryPoint;
 
 
-@Override
-protected void configure(HttpSecurity http) throws Exception {
-            http
-                // for DWH - basic auth
-                .httpBasic()
-                .authenticationEntryPoint(this.authenticationEntryPoint)
+    @Configuration
+    @Order(0)
+    inner class DwhApiWebSecurityConfigurationAdapter : WebSecurityConfigurerAdapter() {
+
+            override fun configure(http: HttpSecurity) {
+                http
+                .sessionManagement()
+                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 .and()
-                ...
+                .antMatcher("/api/dwh/**")
+                .authorizeRequests { authorize ->
+                authorize
+                .anyRequest().authenticated()
+            }
+        .httpBasic(withDefaults())
         }
 
 protecetd void configure(AuthentiAuthenticationManagerBuilder auth) {

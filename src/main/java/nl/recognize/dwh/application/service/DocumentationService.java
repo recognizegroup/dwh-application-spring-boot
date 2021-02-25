@@ -69,8 +69,8 @@ public class DocumentationService {
 
             addArraySchema(pluralName, singularSchemaPath, components);
 
-            paths.addPathItem("'/" + type, createListPathItem(type, pluralSchemaPath, loader.getFilters()));
-            paths.addPathItem("'/" + type + "/id", createDetailPathItem(type, singularSchemaPath, loader.getFilters()));
+            paths.addPathItem("/" + type, createListPathItem(type, pluralSchemaPath, loader.getFilters()));
+            paths.addPathItem("/" + type + "/id", createDetailPathItem(type, singularSchemaPath, loader.getFilters()));
         }
 
         return new OpenAPI()
@@ -109,7 +109,7 @@ public class DocumentationService {
 
         Operation operation = new Operation()
                 .parameters(parameters)
-                .responses(new ApiResponses().addApiResponse("list", createResponse("List of " + type, schemaPath)));
+                .responses(new ApiResponses().addApiResponse("200", createResponse("List of " + type, schemaPath)));
 
         return new PathItem().get(operation);
     }
@@ -143,7 +143,7 @@ public class DocumentationService {
 
         Operation operation = new Operation()
                 .parameters(parameters)
-                .responses(new ApiResponses().addApiResponse("detail", createResponse("Detail of " + type, schemaPath)));
+                .responses(new ApiResponses().addApiResponse("200", createResponse("Detail of " + type, schemaPath)));
 
         return new PathItem().get(operation);
     }

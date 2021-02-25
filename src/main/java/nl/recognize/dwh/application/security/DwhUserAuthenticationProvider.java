@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.stereotype.Component;
@@ -25,17 +26,16 @@ public class DwhUserAuthenticationProvider implements AuthenticationProvider {
         String name = authentication.getName();
         String password = authentication.getCredentials().toString();
 
-        // based on: https://www.baeldung.com/spring-security-authentication-provider
         if (password.equals(sharedSecret)) {
             return new DwhUser(name, password);
         } else {
-            log.warn("Incorrect shared secret: {}", password);
+            log.warn("Incorrect shared secret, got: {} expected {}", password, sharedSecret);
             throw new BadCredentialsException("Incorrect shared secret");
         }
     }
 
     @Override
     public boolean supports(Class<?> authentication) {
-        return authentication.equals(DwhUser.class);
+        return authentication.equals(UsernamePasswordAuthenticationToken.class);
     }
 }
