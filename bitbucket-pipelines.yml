@@ -1,0 +1,14 @@
+clone:
+  depth: full # SonarCloud scanner needs the full history to assign issues properly
+pipelines:
+    default:
+          image: openjdk:13-jdk-buster
+          caches:
+              - gradle
+              - gradlewrapper
+          script:
+              - ./gradlew build
+definitions:
+    caches:
+        sonar: ~/.sonar/cache
+        gradlewrapper: ~/.gradle/wrapper
