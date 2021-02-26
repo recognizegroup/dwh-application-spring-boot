@@ -6,6 +6,7 @@ import nl.recognize.dwh.application.schema.EntityMapping;
 import nl.recognize.dwh.application.schema.FieldMapping;
 import nl.recognize.dwh.application.schema.Mapping;
 import nl.recognize.dwh.application.service.DataPipelineService;
+import org.hibernate.metamodel.model.domain.internal.EntityTypeImpl;
 
 import javax.persistence.EntityManager;
 import javax.persistence.NoResultException;
@@ -15,6 +16,7 @@ import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.CriteriaQuery;
 import javax.persistence.criteria.Predicate;
 import javax.persistence.criteria.Root;
+import javax.persistence.metamodel.EntityType;
 import javax.transaction.Transactional;
 import java.time.ZonedDateTime;
 import java.util.*;
@@ -222,11 +224,7 @@ public abstract class AbstractEntityLoader implements EntityLoader {
             this.criteriaBuilder = entityManager.getCriteriaBuilder();
             this.criteriaQuery = criteriaBuilder.createQuery();
 
-            try {
-                usedClass = Class.forName(getEntityType());
-            } catch (ClassNotFoundException e) {
-                throw new IllegalStateException("Unknown class", e);
-            }
+            usedClass = getEntityClass();
             this.root = criteriaQuery.from(usedClass);
             this.criteriaQuery.select(root);
         }
@@ -236,7 +234,6 @@ public abstract class AbstractEntityLoader implements EntityLoader {
             if (baseFilter.getField() == null) {
                 throw new IllegalStateException("No field present");
             }
-            // TODO: non-int types..
             switch (operator) {
                 case Filter.OPERATOR_EQUAL:
                     predicates.add(criteriaBuilder.equal(root.get(baseFilter.getField()), value));

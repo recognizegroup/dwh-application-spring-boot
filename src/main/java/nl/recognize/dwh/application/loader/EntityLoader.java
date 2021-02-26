@@ -13,6 +13,11 @@ public interface EntityLoader {
     ProtocolResponse<Object> fetchDetail(DetailOptions detailOptions) throws EntityNotFoundException;
 
     /**
+     * Gets the required JAVA class for this entity
+     */
+    Class<?> getEntityClass();
+
+    /**
      * Gets the required type
      */
     String getType();
