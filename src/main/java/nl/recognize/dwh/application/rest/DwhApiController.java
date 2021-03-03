@@ -95,7 +95,7 @@ public class DwhApiController {
         }
     }
 
-    @GetMapping(path = "/")
+    @GetMapping
     public ResponseEntity<String> definitionAction() throws JsonProcessingException {
         OpenAPI documentation = documentationService.generate(entityLoaders);
 
