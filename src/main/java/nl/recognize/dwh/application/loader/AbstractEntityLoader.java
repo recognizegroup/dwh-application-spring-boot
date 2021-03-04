@@ -6,17 +6,12 @@ import nl.recognize.dwh.application.schema.EntityMapping;
 import nl.recognize.dwh.application.schema.FieldMapping;
 import nl.recognize.dwh.application.schema.Mapping;
 import nl.recognize.dwh.application.service.DataPipelineService;
-import org.hibernate.metamodel.model.domain.internal.EntityTypeImpl;
 
 import javax.persistence.EntityManager;
 import javax.persistence.NoResultException;
 import javax.persistence.PersistenceContext;
 import javax.persistence.Query;
-import javax.persistence.criteria.CriteriaBuilder;
-import javax.persistence.criteria.CriteriaQuery;
-import javax.persistence.criteria.Predicate;
-import javax.persistence.criteria.Root;
-import javax.persistence.metamodel.EntityType;
+import javax.persistence.criteria.*;
 import javax.transaction.Transactional;
 import java.time.ZonedDateTime;
 import java.util.*;
@@ -115,10 +110,23 @@ public abstract class AbstractEntityLoader implements EntityLoader {
 
         Object value = filter.getValue();
 
-        if (baseFilter.getType().equalsIgnoreCase(FieldMapping.TYPE_DATE_TIME)) {
-            value = ZonedDateTime.parse((String) value);
+        switch (baseFilter.getType()) {
+            case FieldMapping.TYPE_DATE_TIME:
+                value = ZonedDateTime.parse((String) value);
+                break;
+            case FieldMapping.TYPE_BOOLEAN:
+                value = Boolean.valueOf((String) value);
+                break;
+            case FieldMapping.TYPE_INTEGER:
+            case FieldMapping.TYPE_NUMBER:
+                value = Long.valueOf((String) value);
+                // no conversion
+                break;
+            case FieldMapping.TYPE_STRING:
+            case FieldMapping.TYPE_EMAIL:
+                // no conversion
+                break;
         }
-
         queryBuilder.addPredicate(baseFilter, filter.getOperator(), value);
     }
 
@@ -225,7 +233,7 @@ public abstract class AbstractEntityLoader implements EntityLoader {
             this.criteriaQuery = criteriaBuilder.createQuery();
 
             usedClass = getEntityClass();
-            this.root = criteriaQuery.from(usedClass);
+            this.root = (Root<?>) criteriaQuery.from(usedClass).alias("entity");
             this.criteriaQuery.select(root);
         }
 
@@ -299,7 +307,8 @@ public abstract class AbstractEntityLoader implements EntityLoader {
         public Long getCount() {
             CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
             CriteriaQuery<Long> query = criteriaBuilder.createQuery(Long.class);
-            query.select(criteriaBuilder.count(query.from(usedClass)));
+            query.select(criteriaBuilder.count((Expression<?>) query.from(usedClass).alias("entity")));
+
             return entityManager.createQuery(query.where(getPredicates())).getSingleResult();
         }
 
@@ -308,9 +317,14 @@ public abstract class AbstractEntityLoader implements EntityLoader {
             predicates.add(criteriaBuilder.equal(root.get(idColumn), identifier));
         }
 
-        private Predicate[] getPredicates() {
-            return predicates.toArray(new Predicate[0]);
+        private Predicate getPredicates() {
+            // build predicate list - conjuction starts us with an empty 'and' predicate
+            Predicate rootPredicate = criteriaBuilder.conjunction();
+            for (Predicate predicate : predicates) {
+                rootPredicate = criteriaBuilder.and(rootPredicate, predicate);
+            }
+
+            return rootPredicate;
         }
     }
-
 }
