@@ -74,7 +74,6 @@ public abstract class AbstractEntityLoader implements EntityLoader {
         Map<RequestFilter, Filter> allowedFilters = getAllowedFilters(filters);
 
         for (Map.Entry<RequestFilter, Filter> allowedFilter : allowedFilters.entrySet()) {
-            String parameterName = String.format("%s_%s", allowedFilter.getValue().getField(), allowedFilter.getKey().getOperator());
             applyFilter(queryBuilder, allowedFilter.getValue(), allowedFilter.getKey());
         }
     }
@@ -118,9 +117,11 @@ public abstract class AbstractEntityLoader implements EntityLoader {
                 value = Boolean.valueOf((String) value);
                 break;
             case FieldMapping.TYPE_INTEGER:
-            case FieldMapping.TYPE_NUMBER:
                 value = Long.valueOf((String) value);
                 // no conversion
+                break;
+            case FieldMapping.TYPE_NUMBER:
+                value = Double.valueOf((String) value);
                 break;
             case FieldMapping.TYPE_STRING:
             case FieldMapping.TYPE_EMAIL:
@@ -170,6 +171,9 @@ public abstract class AbstractEntityLoader implements EntityLoader {
                         ClassPropertyAccessor.getValue(entity, name);
 
         Object value = this.dataPipelineService.apply(unprocessed, transformations);
+        if (value instanceof ZonedDateTime) {
+            value = ((ZonedDateTime) value).toOffsetDateTime().toString();
+        }
 
         if (Arrays.asList(FieldMapping.TYPE_ENTITY, FieldMapping.TYPE_ARRAY).contains(type)) {
             Optional<String> arrayType = field.getArrayType();

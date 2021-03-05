@@ -154,17 +154,26 @@ public class DwhApiController {
      */
     private RequestFilter parseFilter(String fieldNameWithParametersUrlEncoded, String urlEncodedValue) {
         String[] tokens = URLDecoder.decode(fieldNameWithParametersUrlEncoded, Charset.defaultCharset())
-                        .split("[\\[\\]]");
-        if (tokens.length != 2) {
-            /** unsupported filter, it does not have an operator. Note: do not fail, it might be
-             * the optional page / limit parameter, which are handled as @RequestParam
-             */
+                .split("[\\[\\]]");
+
+        if (tokens.length == 2) {
+            String value = URLDecoder.decode(urlEncodedValue, Charset.defaultCharset());
+            log.debug("Created filter: name '{}', operator '{}', value '{}'", tokens[0], tokens[1], value);
+            return new RequestFilter(tokens[0], tokens[1], value);
+        } else if (tokens.length == 3) {
+            // format was: filtername[operator]=value
+            String value = tokens[2];
+            if (value.startsWith("=")) {
+                value = value.substring(1);
+            }
+            log.debug("Created filter: name '{}', operator '{}', value '{}'", tokens[0], tokens[1], value);
+            return new RequestFilter(tokens[0], tokens[1], value);
+        } else {
+            log.debug("Skipping filter: '{}'", fieldNameWithParametersUrlEncoded);
+            // unsupported filter, it does not have an operator. Note: do not fail, it might be
+            // the optional page / limit parameter, which are handled as @RequestParam
             return null;
         }
-        String fieldName = tokens[0];
-        String operator = tokens[1];
-
-        return new RequestFilter(fieldName, operator, URLDecoder.decode(urlEncodedValue, Charset.defaultCharset()));
     }
 
     private EntityLoader getEntityLoader(String type) throws EntityNotFoundException {

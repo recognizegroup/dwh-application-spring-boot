@@ -224,7 +224,7 @@ public class DocumentationService {
             while (true) {
                 String newName = name + "_" + appendix;
 
-                if (!components.containsKey(name)) {
+                if (!components.containsKey(newName)) {
                     name = newName;
                     break;
                 }
