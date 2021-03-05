@@ -14,15 +14,16 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.security.RolesAllowed;
 import javax.servlet.http.HttpServletRequest;
-import javax.websocket.server.PathParam;
-import java.util.*;
+import java.net.URLDecoder;
+import java.nio.charset.Charset;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping(path = "/api/dwh")
@@ -45,7 +46,7 @@ public class DwhApiController {
             @Value("${nl.recognize.dwh.application.protocol.version:1.0.0}") String protocolVersion,
             DocumentationService documentationService,
             List<EntityLoader> entityLoaders
-) {
+    ) {
         this.protocolVersion = protocolVersion;
         this.documentationService = documentationService;
         this.entityLoaders = entityLoaders;
@@ -55,8 +56,8 @@ public class DwhApiController {
     @RolesAllowed(Role.ROLE_DWH_BRIDGE)
     public ResponseEntity<ProtocolResponse<List<Map<String, Object>>>> getList(
             @PathVariable("type") String type,
-            @PathParam(PAGE_PARAMETER) Optional<Integer> pageParameter,
-            @PathParam(LIMIT_PARAMETER) Optional<Integer> limitParameter,
+            @RequestParam(PAGE_PARAMETER) Optional<Integer> pageParameter,
+            @RequestParam(LIMIT_PARAMETER) Optional<Integer> limitParameter,
             HttpServletRequest request
     ) {
         try {
@@ -134,19 +135,36 @@ public class DwhApiController {
         List<RequestFilter> filters = new ArrayList<>();
 
         for (Map.Entry<String, String[]> entry : parameters.entrySet()) {
-            String fieldName = entry.getKey();
-            String[] operators = entry.getValue();
-            log.warn("Filter operator: {} -> {}", fieldName, operators);
-            for (String operator : operators) {
-                if (Filter.OPERATORS_ALL.contains(operator)) {
-                    filters.add(
-                            new RequestFilter(fieldName, operator, "todogerke")
-                    );
+            for (String urlEncodedValue : entry.getValue()) {
+
+                RequestFilter filter = parseFilter(entry.getKey(), urlEncodedValue);
+                if (filter != null) {
+                    filters.add(filter);
                 }
             }
-
         }
         return filters;
+    }
+
+    /** Format for supported filters: <key>[<gt>]=<value>
+     *
+     * Example: createdAt[gt]=2020-01-12T12:34:12.000Z
+     * @param fieldNameWithParametersUrlEncoded: part before the =
+     * @param urlEncodedValue: part after the =
+     */
+    private RequestFilter parseFilter(String fieldNameWithParametersUrlEncoded, String urlEncodedValue) {
+        String[] tokens = URLDecoder.decode(fieldNameWithParametersUrlEncoded, Charset.defaultCharset())
+                        .split("[\\[\\]]");
+        if (tokens.length != 2) {
+            /** unsupported filter, it does not have an operator. Note: do not fail, it might be
+             * the optional page / limit parameter, which are handled as @RequestParam
+             */
+            return null;
+        }
+        String fieldName = tokens[0];
+        String operator = tokens[1];
+
+        return new RequestFilter(fieldName, operator, URLDecoder.decode(urlEncodedValue, Charset.defaultCharset()));
     }
 
     private EntityLoader getEntityLoader(String type) throws EntityNotFoundException {
@@ -171,7 +189,8 @@ public class DwhApiController {
         return response;
     }
 
-    private ProtocolResponse<Object> fetchDetails(EntityLoader loader, DetailOptions options) throws EntityNotFoundException {
+    private ProtocolResponse<Object> fetchDetails(EntityLoader loader, DetailOptions options) throws
+            EntityNotFoundException {
         ProtocolResponse<Object> response = loader.fetchDetail(options);
         response.getMetadata().setProtocolVersion(protocolVersion);
         return response;
