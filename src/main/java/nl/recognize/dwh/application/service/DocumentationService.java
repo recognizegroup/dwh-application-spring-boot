@@ -179,40 +179,35 @@ public class DocumentationService {
             String serializedName = field.getSerializedName();
             String type = field.getType();
 
-            if (Arrays.asList(FieldMapping.TYPE_ARRAY, FieldMapping.TYPE_ENTITY).contains(type)) {
+            if (Arrays.asList(FieldMapping.TYPE_LIST, FieldMapping.TYPE_ENTITY).contains(type)) {
                 String schemaName = StringUtils.capitalize(field.getName());
 
-                Optional<String> arrayType = field.getArrayType();
-                if (arrayType.isPresent()) {
-                    properties.put(serializedName, createField(arrayType.get()));
-                } else {
-                    if (type.equals(FieldMapping.TYPE_ARRAY)) {
-                        List<String> splitNames = NameHelper.splitPluralName(schemaName);
-                        if (splitNames.size() < 2) {
-                            throw new IllegalStateException("Incorrect # of strings");
-                        }
-                        String pluralName = splitNames.get(0);
-                        schemaName = splitNames.get(1);
+                if (type.equals(FieldMapping.TYPE_LIST)) {
+                    List<String> splitNames = NameHelper.splitPluralName(schemaName);
+                    if (splitNames.size() < 2) {
+                        throw new IllegalStateException("Incorrect # of strings");
                     }
-
-                    Mapping entryMapping = field.getEntryMapping();
-
-                    String newName = schemaName;
-                    boolean fieldOnly = true;
-                    if (entryMapping instanceof EntityMapping) {
-                        fieldOnly = false;
-                        newName = addSchema(schemaName, (EntityMapping) entryMapping, components);
-                    }
-
-                    FieldMapping fieldMapping = fieldOnly ? (FieldMapping) entryMapping : null;
-                    Schema schemaItem = fieldOnly
-                            ?
-                            createField(fieldMapping.getArrayType().isPresent() ? fieldMapping.getArrayType().get() : fieldMapping.getType())
-                            :
-                            new Schema().type("array").$ref(newName);
-
-                    properties.put(serializedName, schemaItem);
+                    String pluralName = splitNames.get(0);
+                    schemaName = splitNames.get(1);
                 }
+
+                Mapping entryMapping = field.getEntryMapping();
+
+                String newName = schemaName;
+                boolean fieldOnly = true;
+                if (entryMapping instanceof EntityMapping) {
+                    fieldOnly = false;
+                    newName = addSchema(schemaName, (EntityMapping) entryMapping, components);
+                }
+
+                FieldMapping fieldMapping = fieldOnly ? (FieldMapping) entryMapping : null;
+                Schema schemaItem = fieldOnly
+                        ?
+                        createField(fieldMapping.getType())
+                        :
+                        new Schema().type("array").$ref(newName);
+
+                properties.put(serializedName, schemaItem);
             } else {
                 properties.put(serializedName, createField(field.getType()));
             }

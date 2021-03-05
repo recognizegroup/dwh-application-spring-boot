@@ -175,40 +175,27 @@ public abstract class AbstractEntityLoader implements EntityLoader {
             value = ((ZonedDateTime) value).toOffsetDateTime().toString();
         }
 
-        if (Arrays.asList(FieldMapping.TYPE_ENTITY, FieldMapping.TYPE_ARRAY).contains(type)) {
-            Optional<String> arrayType = field.getArrayType();
+        if (Arrays.asList(FieldMapping.TYPE_ENTITY, FieldMapping.TYPE_LIST).contains(type)) {
+            Mapping mapping = field.getEntryMapping();
 
-            if (type.equals(FieldMapping.TYPE_ARRAY) && arrayType.isPresent()) {
-                return value != null ? value : Collections.emptyList();
-            } else if (value == null) {
-                return arrayType.isPresent() ? Collections.emptyList() : null;
+            if (!(mapping instanceof EntityMapping) && !(mapping instanceof FieldMapping)) {
+                throw new IllegalStateException(String.format("Invalid entity mapping for collection at field %s", name));
+            }
+
+            if (type.equals(FieldMapping.TYPE_LIST)) {
+                if (value == null) {
+                    return new ArrayList<>();
+                }
+                List<Object> values = (List<Object>) value;
+                return values.stream()
+                        .map(aValue -> mapping instanceof EntityMapping
+                                ? mapEntity(aValue, (EntityMapping) mapping, usedFilters)
+                                : mapField(aValue, (FieldMapping) mapping, usedFilters)
+                        ).collect(Collectors.toList());
             } else {
-
-                Mapping mapping = field.getEntryMapping();
-
-                if (!(mapping instanceof EntityMapping) && !(mapping instanceof FieldMapping)) {
-                    throw new IllegalStateException(String.format("Invalid entity mapping for collection at field %s", name));
-                }
-
-                if (type.equals(FieldMapping.TYPE_ARRAY)) {
-                    if (arrayType.isPresent()) {
-                        return (value != null) ? (List<Object>) value : new ArrayList<>();
-                    }
-                    List<Object> mappedList = new ArrayList<>();
-                    for (Object child : (List<Object>) value) {
-                        if (mapping instanceof EntityMapping) {
-                            mappedList.add(mapEntity(child, (EntityMapping) mapping, usedFilters));
-                        } else {
-                            mappedList.add(mapField(child, (FieldMapping) mapping, usedFilters));
-                        }
-                    }
-                    return mappedList;
-
-                } else {
-                    return mapping instanceof EntityMapping
-                            ? mapEntity(value, (EntityMapping) mapping, usedFilters)
-                            : mapField(value, (FieldMapping) mapping, usedFilters);
-                }
+                return mapping instanceof EntityMapping
+                        ? mapEntity(value, (EntityMapping) mapping, usedFilters)
+                        : mapField(value, (FieldMapping) mapping, usedFilters);
             }
         } else {
             return value;
