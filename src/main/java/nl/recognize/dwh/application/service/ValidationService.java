@@ -54,7 +54,7 @@ public class ValidationService {
         }
 
         String type = field.getType();
-        if (Arrays.asList(FieldMapping.TYPE_ARRAY, FieldMapping.TYPE_ENTITY).contains(type)) {
+        if (Arrays.asList(FieldMapping.TYPE_LIST, FieldMapping.TYPE_ENTITY).contains(type)) {
             Mapping entryMapping = field.getEntryMapping();
 
             if (entryMapping instanceof EntityMapping) {

@@ -6,7 +6,7 @@ import nl.recognize.dwh.application.model.DataTransformation;
 import java.util.*;
 
 public class FieldMapping implements Mapping {
-    public static final String TYPE_ARRAY = "array";
+    public static final String TYPE_LIST = "list";
     public static final String TYPE_OBJECT = "object";
     public static final String TYPE_STRING = "string";
     public static final String TYPE_ENTITY = "entity";
@@ -43,12 +43,17 @@ public class FieldMapping implements Mapping {
         this.mapping = mapping;
     }
 
-    public String getSerializedName() {
-        return NameHelper.camelToSnake((String) getOption("map_to", name));
+    public FieldMapping(String name, String type, EntityMapping mapping) {
+        this.name = name;
+        this.type = type;
+        this.options = new HashMap<>();
+        options.put("entry_mapping", mapping);
+        this.transformations = Collections.emptyList();
+        this.mapping = mapping;
     }
 
-    public Optional<String> getArrayType() {
-        return Optional.ofNullable(( String) getOption("array_type", null));
+    public String getSerializedName() {
+        return NameHelper.camelToSnake((String) getOption("map_to", name));
     }
 
     public Optional<Class<?>> getParent() {
