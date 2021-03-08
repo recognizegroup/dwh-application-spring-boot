@@ -35,5 +35,5 @@ dependencies {
 
 jar {
     archiveBaseName = 'dwh-application-spring-boot'
-    archiveVersion =  '1.0.1'
+    archiveVersion =  '1.0.2'
 }

@@ -16,11 +16,11 @@ public class FieldMapping implements Mapping {
     public static final String TYPE_DATE_TIME = "date-time";
     public static final String TYPE_EMAIL = "email";
 
-    private String name;
+    private final String name;
 
-    private String type;
+    private final String type;
 
-    private Map<String, String> options;
+    private final Map<String, Object> options;
 
     private List<DataTransformation> transformations;
 
@@ -34,11 +34,12 @@ public class FieldMapping implements Mapping {
         this.mapping = null;
     }
 
-    public FieldMapping(String name, String type, Map<String, String> options, List<DataTransformation> transformations, Mapping mapping) {
+    public FieldMapping(String name, EntityMapping mapping) {
         this.name = name;
-        this.type = type;
-        this.options = options;
-        this.transformations = transformations;
+        this.type = TYPE_ENTITY;
+        this.options = new HashMap<>();
+        options.put("entry_mapping", mapping);
+        this.transformations = Collections.emptyList();
         this.mapping = mapping;
     }
 
@@ -77,7 +78,7 @@ public class FieldMapping implements Mapping {
         return transformations;
     }
 
-    public Map<String, String> getOptions() {
+    public Map<String, Object> getOptions() {
         return options;
     }
 }
