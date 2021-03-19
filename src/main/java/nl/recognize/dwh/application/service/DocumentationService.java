@@ -70,7 +70,7 @@ public class DocumentationService {
             addArraySchema(pluralName, singularSchemaPath, components);
 
             paths.addPathItem("/" + type, createListPathItem(type, pluralSchemaPath, loader.getFilters()));
-            paths.addPathItem("/" + type + "/id", createDetailPathItem(type, singularSchemaPath, loader.getFilters()));
+            paths.addPathItem("/" + type + "/{id}", createDetailPathItem(type, singularSchemaPath, loader.getFilters()));
         }
 
         return new OpenAPI()
