@@ -37,3 +37,8 @@ jar {
     archiveBaseName = 'dwh-application-spring-boot'
     archiveVersion =  '1.0.3'
 }
+
+test {
+    useJUnitPlatform {
+    }
+}
