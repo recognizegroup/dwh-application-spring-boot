@@ -8,13 +8,21 @@ pipelines:
           - gradle
           - gradlewrapper
         script:
-          - ./gradlew build
-          - export FILE="$(ls build/libs/*.jar | sort -V | tail -n1)"
-          - pipe: atlassian/bitbucket-upload-file:0.1.2
-            variables:
-              BITBUCKET_USERNAME: $BITBUCKET_USERNAME
-              BITBUCKET_APP_PASSWORD: $BITBUCKET_APP_PASSWORD
-              FILENAME: "$FILE"
+          - ./gradlew test
+  branches:
+    develop:
+      - step:
+          caches:
+            - gradle
+            - gradlewrapper
+          script:
+            - ./gradlew build
+            - export FILE="$(ls build/libs/*.jar | sort -V | tail -n1)"
+            - pipe: atlassian/bitbucket-upload-file:0.1.2
+              variables:
+                BITBUCKET_USERNAME: $BITBUCKET_USERNAME
+                BITBUCKET_APP_PASSWORD: $BITBUCKET_APP_PASSWORD
+                FILENAME: "$FILE"
 definitions:
   caches:
     sonar: ~/.sonar/cache
