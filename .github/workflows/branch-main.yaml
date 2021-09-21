@@ -8,6 +8,9 @@ jobs:
     one:
         runs-on: ubuntu-latest
         name: One
+        permissions:
+            contents: read
+            packages: write
         container:
             image: openjdk:13-jdk-buster
         steps:
