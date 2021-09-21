@@ -2,8 +2,8 @@ on:
     workflow_dispatch: null
     push:
         branches:
-        - develop
-name: Branch develop
+        - main
+name: Branch main
 jobs:
     one:
         runs-on: ubuntu-latest
@@ -24,9 +24,4 @@ jobs:
                     ~/.gradle/wrapper
                 key: ${{ runner.os }}-cache-gradle_caches_gradle_wrapper
         -   name: Run script
-            run: |-
-                ./gradlew build
-                export FILE="$(ls build/libs/*.jar | sort -V | tail -n1)"
-env:
-    BITBUCKET_USERNAME: juulrecognize
-    BITBUCKET_APP_PASSWORD: ${{ secrets.BITBUCKET_APP_PASSWORD }}
+            run: ./gradlew publish
