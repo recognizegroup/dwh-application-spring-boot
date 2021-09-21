@@ -25,3 +25,5 @@ jobs:
                 key: ${{ runner.os }}-cache-gradle_caches_gradle_wrapper
         -   name: Run script
             run: ./gradlew publish
+            env:
+                GITHUB_TOKEN: ${{ github.token  }}

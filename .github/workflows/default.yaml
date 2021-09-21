@@ -25,6 +25,4 @@ jobs:
                 key: ${{ runner.os }}-cache-gradle_caches_gradle_wrapper
         -   name: Run script
             run: ./gradlew test
-env:
-    BITBUCKET_USERNAME: juulrecognize
-    BITBUCKET_APP_PASSWORD: ${{ secrets.BITBUCKET_APP_PASSWORD }}
+
