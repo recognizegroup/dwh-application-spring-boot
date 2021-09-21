@@ -1,0 +1,30 @@
+on:
+    workflow_dispatch: null
+    push:
+        branches:
+        - '**'
+name: Default
+jobs:
+    one:
+        runs-on: ubuntu-latest
+        name: One
+        container:
+            image: openjdk:13-jdk-buster
+        steps:
+        -   name: Check out repository code
+            uses: actions/checkout@v2
+            with:
+                fetch-depth: 0
+        -   uses: recognizegroup/bitbucket-migration-compatibility-action@v1
+        -   name: Cache
+            uses: actions/cache@v2
+            with:
+                path: |-
+                    ~/.gradle/caches
+                    ~/.gradle/wrapper
+                key: ${{ runner.os }}-cache-gradle_caches_gradle_wrapper
+        -   name: Run script
+            run: ./gradlew test
+env:
+    BITBUCKET_USERNAME: juulrecognize
+    BITBUCKET_APP_PASSWORD: ${{ secrets.BITBUCKET_APP_PASSWORD }}
