@@ -40,12 +40,14 @@ test {
 }
 
 publishing {
-    maven(MavenPublication) {
-        groupId = 'nl.recognize.dwh'
-        artifactId = 'dwh-application-spring-boot'
-        version = '1.0.3'
+    publications {
+        maven(MavenPublication) {
+            groupId = 'nl.recognize.dwh'
+            artifactId = 'dwh-application-spring-boot'
+            version = '1.0.3'
 
-        from components.java
+            from components.java
+        }
     }
 
     repositories {
