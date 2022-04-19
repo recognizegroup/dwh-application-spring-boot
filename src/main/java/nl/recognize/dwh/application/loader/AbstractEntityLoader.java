@@ -175,28 +175,30 @@ public abstract class AbstractEntityLoader implements EntityLoader {
             value = ((ZonedDateTime) value).toOffsetDateTime().toString();
         }
 
-        if (Arrays.asList(FieldMapping.TYPE_ENTITY, FieldMapping.TYPE_LIST).contains(type)) {
+        if (Arrays.asList(FieldMapping.TYPE_ENTITY, FieldMapping.TYPE_LIST, FieldMapping.TYPE_SET).contains(type)) {
             Mapping mapping = field.getEntryMapping();
 
             if (!(mapping instanceof EntityMapping) && !(mapping instanceof FieldMapping)) {
                 throw new IllegalStateException(String.format("Invalid entity mapping for collection at field %s", name));
             }
 
-            if (type.equals(FieldMapping.TYPE_LIST)) {
-                if (value == null) {
-                    return new ArrayList<>();
-                }
-                List<Object> values = (List<Object>) value;
-                return values.stream()
+            Collection<Object> values = new ArrayList<>();
+            if (value != null) {
+                if (FieldMapping.TYPE_SET.equals(type) || FieldMapping.TYPE_LIST.equals(type)) {
+                    values = (Collection<Object>) value;
+                    return values.stream()
                         .map(aValue -> mapping instanceof EntityMapping
                                 ? mapEntity(aValue, (EntityMapping) mapping, usedFilters)
                                 : mapField(aValue, (FieldMapping) mapping, usedFilters)
                         ).collect(Collectors.toList());
-            } else {
+                }
+
                 return mapping instanceof EntityMapping
                         ? mapEntity(value, (EntityMapping) mapping, usedFilters)
                         : mapField(value, (FieldMapping) mapping, usedFilters);
             }
+
+            return null;
         } else {
             return value;
         }
