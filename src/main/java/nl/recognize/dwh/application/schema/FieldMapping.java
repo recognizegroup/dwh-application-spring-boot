@@ -7,6 +7,7 @@ import java.util.*;
 
 public class FieldMapping implements Mapping {
     public static final String TYPE_LIST = "list";
+    public static final String TYPE_SET = "set";
     public static final String TYPE_OBJECT = "object";
     public static final String TYPE_STRING = "string";
     public static final String TYPE_ENTITY = "entity";
