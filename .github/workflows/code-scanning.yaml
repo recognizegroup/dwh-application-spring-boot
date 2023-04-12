@@ -1,0 +1,43 @@
+name: "Code Scanning"
+
+on:
+  push:
+    branches: [ develop, main, master, release/*, hotfix/* ]
+  pull_request:
+    branches: [ develop ]
+  schedule:
+    - cron: '0 9 * * 1'
+
+jobs:
+  code-scanning-java:
+    name: Perform code scanning (Java) - Analyze
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup jdk
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '13'
+
+      # Initializes the CodeQL tools for scanning.
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v2
+        with:
+          languages: java
+          packs: codeql/java-queries
+
+      - name: Run preparation script
+        run: |-
+          export GRADLE_OPTS="-Xmx2048m"
+          ./gradlew --no-daemon --no-parallel assemble
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v2
