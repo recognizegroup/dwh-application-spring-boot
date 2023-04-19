@@ -7,12 +7,12 @@ import nl.recognize.dwh.application.schema.FieldMapping;
 import nl.recognize.dwh.application.schema.Mapping;
 import nl.recognize.dwh.application.service.DataPipelineService;
 
-import javax.persistence.EntityManager;
-import javax.persistence.NoResultException;
-import javax.persistence.PersistenceContext;
-import javax.persistence.Query;
-import javax.persistence.criteria.*;
-import javax.transaction.Transactional;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.NoResultException;
+import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.TypedQuery;
+import jakarta.persistence.criteria.*;
+import jakarta.transaction.Transactional;
 import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -287,7 +287,7 @@ public abstract class AbstractEntityLoader implements EntityLoader {
         }
 
         @Override
-        public Query createQuery() {
+        public TypedQuery<Object> createQuery() {
             CriteriaQuery<Long> query = criteriaBuilder.createQuery(Long.class);
             query.select(criteriaBuilder.count(query.from(usedClass)));
 

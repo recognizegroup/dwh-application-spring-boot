@@ -5,18 +5,14 @@ on:
         - main
 name: Branch main
 jobs:
-    one:
+    publish:
         runs-on: ubuntu-latest
-        name: One
         permissions:
             contents: read
             packages: write
-        container:
-            image: openjdk:13-jdk-buster
         steps:
         -   name: Check out repository code
             uses: actions/checkout@v2
-        -   uses: recognizegroup/bitbucket-migration-compatibility-action@v1
         -   name: Cache
             uses: actions/cache@v2
             with:
@@ -24,7 +20,7 @@ jobs:
                     ~/.gradle/caches
                     ~/.gradle/wrapper
                 key: ${{ runner.os }}-cache-gradle_caches_gradle_wrapper
-        -   name: Run script
+        -   name: Run gradlew publish
             run: ./gradlew publish
             env:
                 GITHUB_TOKEN: ${{ github.token  }}

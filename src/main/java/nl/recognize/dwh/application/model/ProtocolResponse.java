@@ -1,7 +1,5 @@
 package nl.recognize.dwh.application.model;
 
-import java.util.Map;
-
 public class ProtocolResponse<BODY extends Object> {
     private Metadata metadata;
 
