@@ -16,8 +16,6 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
-    // TODO: Disabled because i suspect it is not used
-//    implementation("io.javalin:javalin-openapi:$javalinOpenApiVersion")
 
     implementation("io.swagger.core.v3:swagger-core:2.2.8")
 
