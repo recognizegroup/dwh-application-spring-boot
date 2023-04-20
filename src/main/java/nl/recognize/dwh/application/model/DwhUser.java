@@ -69,7 +69,7 @@ public class DwhUser implements Authentication {
 
     @Override
     public void setAuthenticated(boolean isAuthenticated) throws IllegalArgumentException {
-        this.authenticated = authenticated;
+        this.authenticated = isAuthenticated;
     }
 
     @Override

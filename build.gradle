@@ -1,37 +1,26 @@
-buildscript {
-    ext {
-        springBootVersion = '2.4.2'
-        springSecurityVersion = '5.4.2'
-        javalinOpenApiVersion = '3.13.3'
-    }
-    repositories {
-        mavenCentral()
-    }
-}
-
 plugins {
     id 'maven-publish'
-    id 'io.spring.dependency-management' version '1.0.11.RELEASE'
+    id 'org.springframework.boot' version '3.0.5'
+    id 'io.spring.dependency-management' version '1.1.0'
     id 'java'
 }
 
-
-sourceCompatibility = 13.0
-targetCompatibility = 13.0
+sourceCompatibility = 17.0
+targetCompatibility = 17.0
 
 repositories {
-    jcenter()
     mavenCentral()
 }
 
 dependencies {
-    compile("org.springframework.boot:spring-boot-starter-web:${springBootVersion}")
-    compile("org.springframework.boot:spring-boot-starter-security:${springBootVersion}")
-    compile("org.springframework.boot:spring-boot-starter-data-jpa:${springBootVersion}")
-    compile("io.javalin:javalin-openapi:$javalinOpenApiVersion")
+    implementation("org.springframework.boot:spring-boot-starter-web")
+    implementation("org.springframework.boot:spring-boot-starter-security")
+    implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 
-    testCompile("org.springframework.boot:spring-boot-starter-test:${springBootVersion}")
-    testCompile("org.springframework.security:spring-security-test:${springSecurityVersion}")
+    implementation("io.swagger.core.v3:swagger-core:2.2.8")
+
+    testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation("org.springframework.security:spring-security-test")
 }
 
 test {
@@ -39,12 +28,16 @@ test {
     }
 }
 
+bootJar {
+    enabled = false
+}
+
 publishing {
     publications {
         maven(MavenPublication) {
             groupId = 'nl.recognize.dwh'
             artifactId = 'dwh-application-spring-boot'
-            version = '1.0.3'
+            version = '2.0.0'
 
             from components.java
         }

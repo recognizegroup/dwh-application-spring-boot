@@ -2,7 +2,6 @@ package nl.recognize.dwh.application.model;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
 
 public class Filter {
     public static final String OPERATOR_GREATER_THAN = "gt";
