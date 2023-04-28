@@ -194,7 +194,7 @@ public abstract class AbstractEntityLoader implements EntityLoader {
                 return values.stream()
                         .map(aValue -> mapping instanceof EntityMapping
                                 ? mapEntity(aValue, (EntityMapping) mapping, usedFilters)
-                                : mapField(aValue, (FieldMapping) mapping, usedFilters)
+                                : aValue
                         ).collect(Collectors.toList());
             } else if (type.equals(FieldMapping.TYPE_SET)) {
                 if (value == null) {
@@ -204,7 +204,7 @@ public abstract class AbstractEntityLoader implements EntityLoader {
                 return values.stream()
                         .map(aValue -> mapping instanceof EntityMapping
                                 ? mapEntity(aValue, (EntityMapping) mapping, usedFilters)
-                                : mapField(aValue, (FieldMapping) mapping, usedFilters)
+                                : aValue
                         ).collect(Collectors.toSet());
             } else {
                 return mapping instanceof EntityMapping

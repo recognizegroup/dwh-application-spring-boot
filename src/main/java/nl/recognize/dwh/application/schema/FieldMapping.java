@@ -44,17 +44,8 @@ public class FieldMapping implements Mapping {
         this.mapping = mapping;
     }
 
-    public FieldMapping(String name, String type, EntityMapping mapping) {
+    public FieldMapping(String name, String type, Mapping mapping) {
         this.name = name;
-        this.type = type;
-        this.options = new HashMap<>();
-        options.put("entry_mapping", mapping);
-        this.transformations = Collections.emptyList();
-        this.mapping = mapping;
-    }
-
-    public FieldMapping(String type, FieldMapping mapping) {
-        this.name = null;
         this.type = type;
         this.options = new HashMap<>();
         options.put("entry_mapping", mapping);
