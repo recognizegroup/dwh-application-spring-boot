@@ -141,6 +141,10 @@ public abstract class AbstractEntityLoader implements EntityLoader {
     }
 
     private Map<String, Object> mapEntity(Object entity, EntityMapping mapping, List<RequestFilter> usedFilters) {
+        if (entity == null) {
+            return null;
+        }
+
         Map<String, Object> result = new HashMap<>();
 
         entity = dataPipelineService.apply(entity, mapping.getTransformations());
