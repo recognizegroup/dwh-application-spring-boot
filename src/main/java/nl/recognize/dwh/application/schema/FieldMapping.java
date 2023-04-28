@@ -54,6 +54,7 @@ public class FieldMapping implements Mapping {
     }
 
     public FieldMapping(String type, FieldMapping mapping) {
+        this.name = null;
         this.type = type;
         this.options = new HashMap<>();
         options.put("entry_mapping", mapping);
