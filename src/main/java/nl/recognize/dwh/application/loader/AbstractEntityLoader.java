@@ -179,7 +179,7 @@ public abstract class AbstractEntityLoader implements EntityLoader {
             value = ((ZonedDateTime) value).toOffsetDateTime().toString();
         }
 
-        if (Arrays.asList(FieldMapping.TYPE_ENTITY, FieldMapping.TYPE_LIST).contains(type)) {
+        if (Arrays.asList(FieldMapping.TYPE_ENTITY, FieldMapping.TYPE_LIST, FieldMapping.TYPE_SET).contains(type)) {
             Mapping mapping = field.getEntryMapping();
 
             if (!(mapping instanceof EntityMapping) && !(mapping instanceof FieldMapping)) {
@@ -196,6 +196,16 @@ public abstract class AbstractEntityLoader implements EntityLoader {
                                 ? mapEntity(aValue, (EntityMapping) mapping, usedFilters)
                                 : mapField(aValue, (FieldMapping) mapping, usedFilters)
                         ).collect(Collectors.toList());
+            } else if (type.equals(FieldMapping.TYPE_SET)) {
+                if (value == null) {
+                    return new HashSet<>();
+                }
+                Set<Object> values = (Set<Object>) value;
+                return values.stream()
+                        .map(aValue -> mapping instanceof EntityMapping
+                                ? mapEntity(aValue, (EntityMapping) mapping, usedFilters)
+                                : mapField(aValue, (FieldMapping) mapping, usedFilters)
+                        ).collect(Collectors.toSet());
             } else {
                 return mapping instanceof EntityMapping
                         ? mapEntity(value, (EntityMapping) mapping, usedFilters)
