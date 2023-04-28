@@ -182,7 +182,7 @@ public class DocumentationService {
             if (Arrays.asList(FieldMapping.TYPE_LIST, FieldMapping.TYPE_ENTITY, FieldMapping.TYPE_SET).contains(type)) {
                 String schemaName = StringUtils.capitalize(field.getName());
 
-                if (type.equals(FieldMapping.TYPE_LIST) || type.equals(Fieldmapping.TYPE_SET)) {
+                if (type.equals(FieldMapping.TYPE_LIST) || type.equals(FieldMapping.TYPE_SET)) {
                     List<String> splitNames = NameHelper.splitPluralName(schemaName);
                     if (splitNames.size() < 2) {
                         throw new IllegalStateException("Incorrect # of strings");
