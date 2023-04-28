@@ -53,6 +53,14 @@ public class FieldMapping implements Mapping {
         this.mapping = mapping;
     }
 
+    public FieldMapping(String type) {
+        this.name = null;
+        this.type = type;
+        this.options = new HashMap<>();
+        this.transformations = Collections.emptyList();
+        this.mapping = null;
+    }
+
     public String getSerializedName() {
         return NameHelper.camelToSnake((String) getOption("map_to", name));
     }
