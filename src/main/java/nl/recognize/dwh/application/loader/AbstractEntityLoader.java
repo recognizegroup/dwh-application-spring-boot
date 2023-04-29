@@ -322,6 +322,11 @@ public abstract class AbstractEntityLoader implements EntityLoader {
             predicates.add(criteriaBuilder.equal(root.get(idColumn), identifier));
         }
 
+        @Override
+        public void setIdentifier(String idColumn, UUID identifier) {
+            predicates.add(criteriaBuilder.equal(root.get(idColumn), identifier));
+        }
+
         private Predicate getPredicates() {
             // build predicate list - conjuction starts us with an empty 'and' predicate
             Predicate rootPredicate = criteriaBuilder.conjunction();
