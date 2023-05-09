@@ -78,6 +78,11 @@ public abstract class AbstractEntityLoader implements EntityLoader {
         }
     }
 
+    @Override
+    public String getIdentifierType() {
+        return FieldMapping.TYPE_UUID;
+    }
+
     /**
      * Returns an array of tuples that contain the request filter, and the defined filter
      */
