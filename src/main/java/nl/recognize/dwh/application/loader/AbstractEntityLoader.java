@@ -186,6 +186,8 @@ public abstract class AbstractEntityLoader implements EntityLoader {
         Object value = this.dataPipelineService.apply(unprocessed, transformations);
         if (value instanceof ZonedDateTime) {
             value = ((ZonedDateTime) value).toOffsetDateTime().toString();
+        } else if (value instanceof LocalDateTime) {
+            value = ((LocalDateTime) value).toString();
         }
 
         if (Arrays.asList(FieldMapping.TYPE_ENTITY, FieldMapping.TYPE_LIST, FieldMapping.TYPE_SET).contains(type)) {
@@ -267,6 +269,8 @@ public abstract class AbstractEntityLoader implements EntityLoader {
                         predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get(baseFilter.getField()), (Long) value));
                     } else if (value instanceof ZonedDateTime) {
                         predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get(baseFilter.getField()), (ZonedDateTime) value));
+                    } else if (value instanceof LocalDateTime) {
+                        predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get(baseFilter.getField()), (LocalDateTime) value));
                     } else {
                         predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get(baseFilter.getField()), (String) value));
                     }
@@ -278,6 +282,8 @@ public abstract class AbstractEntityLoader implements EntityLoader {
                         predicates.add(criteriaBuilder.greaterThan(root.get(baseFilter.getField()), (Long) value));
                     } else if (value instanceof ZonedDateTime) {
                         predicates.add(criteriaBuilder.greaterThan(root.get(baseFilter.getField()), (ZonedDateTime) value));
+                    }else if (value instanceof LocalDateTime) {
+                        predicates.add(criteriaBuilder.greaterThan(root.get(baseFilter.getField()), (LocalDateTime) value));
                     } else {
                         predicates.add(criteriaBuilder.greaterThan(root.get(baseFilter.getField()), (String) value));
                     }
@@ -289,6 +295,8 @@ public abstract class AbstractEntityLoader implements EntityLoader {
                         predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get(baseFilter.getField()), (Long) value));
                     } else if (value instanceof ZonedDateTime) {
                         predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get(baseFilter.getField()), (ZonedDateTime) value));
+                    } else if (value instanceof LocalDateTime) {
+                        predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get(baseFilter.getField()), (LocalDateTime) value));
                     } else {
                         predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get(baseFilter.getField()), (String) value));
                     }
@@ -300,6 +308,8 @@ public abstract class AbstractEntityLoader implements EntityLoader {
                         predicates.add(criteriaBuilder.lessThan(root.get(baseFilter.getField()), (Long) value));
                     } else if (value instanceof ZonedDateTime) {
                         predicates.add(criteriaBuilder.lessThan(root.get(baseFilter.getField()), (ZonedDateTime) value));
+                    } else if (value instanceof LocalDateTime) {
+                        predicates.add(criteriaBuilder.lessThan(root.get(baseFilter.getField()), (LocalDateTime) value));
                     } else {
                         predicates.add(criteriaBuilder.lessThan(root.get(baseFilter.getField()), (String) value));
                     }
