@@ -13,6 +13,7 @@ import javax.persistence.PersistenceContext;
 import javax.persistence.Query;
 import javax.persistence.criteria.*;
 import javax.transaction.Transactional;
+import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -117,6 +118,9 @@ public abstract class AbstractEntityLoader implements EntityLoader {
         switch (baseFilter.getType()) {
             case FieldMapping.TYPE_DATE_TIME:
                 value = ZonedDateTime.parse((String) value);
+                break;
+            case FieldMapping.TYPE_DATE_TIME_LOCAL:
+                value = LocalDateTime.parse((String) value);
                 break;
             case FieldMapping.TYPE_BOOLEAN:
                 value = Boolean.valueOf((String) value);

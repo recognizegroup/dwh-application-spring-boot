@@ -242,7 +242,7 @@ public class DocumentationService {
         String format = null;
         String type = createOpenApiTypeFromFieldType(originalType);
 
-        if (type.equals(FieldMapping.TYPE_DATE_TIME)) {
+        if (type.equals(FieldMapping.TYPE_DATE_TIME) || type.equals(FieldMapping.TYPE_DATE_TIME_LOCAL)) {
             format = FieldMapping.TYPE_DATE_TIME;
         } else if (type.equals(FieldMapping.TYPE_EMAIL)) {
             format = FieldMapping.TYPE_EMAIL;
@@ -258,7 +258,7 @@ public class DocumentationService {
     }
 
     private String createOpenApiTypeFromFieldType(String type) {
-        if (type.equals(FieldMapping.TYPE_DATE_TIME)) {
+        if (type.equals(FieldMapping.TYPE_DATE_TIME) || type.equals(FieldMapping.TYPE_DATE_TIME_LOCAL)) {
             type = FieldMapping.TYPE_STRING;
         } else if (type.equals(FieldMapping.TYPE_EMAIL)) {
             type = FieldMapping.TYPE_STRING;
@@ -283,7 +283,7 @@ public class DocumentationService {
 
             String description = String.format("Filter field %s %s where the value is of type %s", filter.getQueryParameter(), operatorDescription, filter.getType());
 
-            if (filter.getType().equals(FieldMapping.TYPE_DATE_TIME)) {
+            if (filter.getType().equals(FieldMapping.TYPE_DATE_TIME) || filter.getType().equals(FieldMapping.TYPE_DATE_TIME_LOCAL)) {
                 description += " (in format of ISO8601)";
             }
 

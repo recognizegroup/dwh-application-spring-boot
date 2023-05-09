@@ -15,6 +15,7 @@ public class FieldMapping implements Mapping {
     public static final String TYPE_NUMBER = "number";
     public static final String TYPE_BOOLEAN = "boolean";
     public static final String TYPE_DATE_TIME = "date-time";
+    public static final String TYPE_DATE_TIME_LOCAL = "date-time-local";
     public static final String TYPE_EMAIL = "email";
     public static final String TYPE_UUID = "uuid";
 
