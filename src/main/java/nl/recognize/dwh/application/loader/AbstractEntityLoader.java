@@ -81,7 +81,7 @@ public abstract class AbstractEntityLoader implements EntityLoader {
 
     @Override
     public String getIdentifierType() {
-        return FieldMapping.TYPE_UUID;
+        return FieldMapping.TYPE_INTEGER;
     }
 
     /**
@@ -282,7 +282,7 @@ public abstract class AbstractEntityLoader implements EntityLoader {
                         predicates.add(criteriaBuilder.greaterThan(root.get(baseFilter.getField()), (Long) value));
                     } else if (value instanceof ZonedDateTime) {
                         predicates.add(criteriaBuilder.greaterThan(root.get(baseFilter.getField()), (ZonedDateTime) value));
-                    }else if (value instanceof LocalDateTime) {
+                    } else if (value instanceof LocalDateTime) {
                         predicates.add(criteriaBuilder.greaterThan(root.get(baseFilter.getField()), (LocalDateTime) value));
                     } else {
                         predicates.add(criteriaBuilder.greaterThan(root.get(baseFilter.getField()), (String) value));
