@@ -13,6 +13,7 @@ import javax.persistence.PersistenceContext;
 import javax.persistence.Query;
 import javax.persistence.criteria.*;
 import javax.transaction.Transactional;
+import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -78,6 +79,11 @@ public abstract class AbstractEntityLoader implements EntityLoader {
         }
     }
 
+    @Override
+    public String getIdentifierType() {
+        return FieldMapping.TYPE_INTEGER;
+    }
+
     /**
      * Returns an array of tuples that contain the request filter, and the defined filter
      */
@@ -113,6 +119,9 @@ public abstract class AbstractEntityLoader implements EntityLoader {
             case FieldMapping.TYPE_DATE_TIME:
                 value = ZonedDateTime.parse((String) value);
                 break;
+            case FieldMapping.TYPE_DATE_TIME_LOCAL:
+                value = LocalDateTime.parse((String) value);
+                break;
             case FieldMapping.TYPE_BOOLEAN:
                 value = Boolean.valueOf((String) value);
                 break;
@@ -141,6 +150,10 @@ public abstract class AbstractEntityLoader implements EntityLoader {
     }
 
     private Map<String, Object> mapEntity(Object entity, EntityMapping mapping, List<RequestFilter> usedFilters) {
+        if (entity == null) {
+            return null;
+        }
+
         Map<String, Object> result = new HashMap<>();
 
         entity = dataPipelineService.apply(entity, mapping.getTransformations());
@@ -173,9 +186,11 @@ public abstract class AbstractEntityLoader implements EntityLoader {
         Object value = this.dataPipelineService.apply(unprocessed, transformations);
         if (value instanceof ZonedDateTime) {
             value = ((ZonedDateTime) value).toOffsetDateTime().toString();
+        } else if (value instanceof LocalDateTime) {
+            value = ((LocalDateTime) value).toString();
         }
 
-        if (Arrays.asList(FieldMapping.TYPE_ENTITY, FieldMapping.TYPE_LIST).contains(type)) {
+        if (Arrays.asList(FieldMapping.TYPE_ENTITY, FieldMapping.TYPE_LIST, FieldMapping.TYPE_SET).contains(type)) {
             Mapping mapping = field.getEntryMapping();
 
             if (!(mapping instanceof EntityMapping) && !(mapping instanceof FieldMapping)) {
@@ -190,8 +205,18 @@ public abstract class AbstractEntityLoader implements EntityLoader {
                 return values.stream()
                         .map(aValue -> mapping instanceof EntityMapping
                                 ? mapEntity(aValue, (EntityMapping) mapping, usedFilters)
-                                : mapField(aValue, (FieldMapping) mapping, usedFilters)
+                                : aValue
                         ).collect(Collectors.toList());
+            } else if (type.equals(FieldMapping.TYPE_SET)) {
+                if (value == null) {
+                    return new HashSet<>();
+                }
+                Set<Object> values = (Set<Object>) value;
+                return values.stream()
+                        .map(aValue -> mapping instanceof EntityMapping
+                                ? mapEntity(aValue, (EntityMapping) mapping, usedFilters)
+                                : aValue
+                        ).collect(Collectors.toSet());
             } else {
                 return mapping instanceof EntityMapping
                         ? mapEntity(value, (EntityMapping) mapping, usedFilters)
@@ -244,6 +269,8 @@ public abstract class AbstractEntityLoader implements EntityLoader {
                         predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get(baseFilter.getField()), (Long) value));
                     } else if (value instanceof ZonedDateTime) {
                         predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get(baseFilter.getField()), (ZonedDateTime) value));
+                    } else if (value instanceof LocalDateTime) {
+                        predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get(baseFilter.getField()), (LocalDateTime) value));
                     } else {
                         predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get(baseFilter.getField()), (String) value));
                     }
@@ -255,6 +282,8 @@ public abstract class AbstractEntityLoader implements EntityLoader {
                         predicates.add(criteriaBuilder.greaterThan(root.get(baseFilter.getField()), (Long) value));
                     } else if (value instanceof ZonedDateTime) {
                         predicates.add(criteriaBuilder.greaterThan(root.get(baseFilter.getField()), (ZonedDateTime) value));
+                    } else if (value instanceof LocalDateTime) {
+                        predicates.add(criteriaBuilder.greaterThan(root.get(baseFilter.getField()), (LocalDateTime) value));
                     } else {
                         predicates.add(criteriaBuilder.greaterThan(root.get(baseFilter.getField()), (String) value));
                     }
@@ -266,6 +295,8 @@ public abstract class AbstractEntityLoader implements EntityLoader {
                         predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get(baseFilter.getField()), (Long) value));
                     } else if (value instanceof ZonedDateTime) {
                         predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get(baseFilter.getField()), (ZonedDateTime) value));
+                    } else if (value instanceof LocalDateTime) {
+                        predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get(baseFilter.getField()), (LocalDateTime) value));
                     } else {
                         predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get(baseFilter.getField()), (String) value));
                     }
@@ -277,6 +308,8 @@ public abstract class AbstractEntityLoader implements EntityLoader {
                         predicates.add(criteriaBuilder.lessThan(root.get(baseFilter.getField()), (Long) value));
                     } else if (value instanceof ZonedDateTime) {
                         predicates.add(criteriaBuilder.lessThan(root.get(baseFilter.getField()), (ZonedDateTime) value));
+                    } else if (value instanceof LocalDateTime) {
+                        predicates.add(criteriaBuilder.lessThan(root.get(baseFilter.getField()), (LocalDateTime) value));
                     } else {
                         predicates.add(criteriaBuilder.lessThan(root.get(baseFilter.getField()), (String) value));
                     }
@@ -305,6 +338,11 @@ public abstract class AbstractEntityLoader implements EntityLoader {
 
         @Override
         public void setIdentifier(String idColumn, String identifier) {
+            predicates.add(criteriaBuilder.equal(root.get(idColumn), identifier));
+        }
+
+        @Override
+        public void setIdentifier(String idColumn, UUID identifier) {
             predicates.add(criteriaBuilder.equal(root.get(idColumn), identifier));
         }
 

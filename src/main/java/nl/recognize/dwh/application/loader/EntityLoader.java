@@ -56,4 +56,9 @@ public interface EntityLoader {
      * - If you want to serialize an array of primitive types, you can use array_type
      */
     EntityMapping getEntityMapping();
+
+    /**
+     * Specify the data type of the identifier.
+     */
+    String getIdentifierType();
 }
