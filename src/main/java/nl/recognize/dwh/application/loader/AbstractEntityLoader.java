@@ -34,6 +34,7 @@ public abstract class AbstractEntityLoader implements EntityLoader {
         QueryBuilder queryBuilder = createQueryBuilder();
 
         applyFilters(queryBuilder, listOptions.getFilters());
+        applySorting(queryBuilder);
 
         Long total = queryBuilder.getCount();
 
