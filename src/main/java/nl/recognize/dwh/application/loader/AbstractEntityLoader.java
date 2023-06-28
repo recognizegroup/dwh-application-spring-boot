@@ -84,6 +84,10 @@ public abstract class AbstractEntityLoader implements EntityLoader {
         return FieldMapping.TYPE_INTEGER;
     }
 
+    public void applySorting(QueryBuilder queryBuilder) {
+        // no sorting by default
+    }
+
     /**
      * Returns an array of tuples that contain the request filter, and the defined filter
      */
@@ -242,6 +246,7 @@ public abstract class AbstractEntityLoader implements EntityLoader {
         private final Root<?> root;
         private final Class<?> usedClass;
         private final List<Predicate> predicates = new ArrayList<>();
+        private final List<Order> orders = new ArrayList<>();
 
         public QueryBuilderImpl(
         ) {
@@ -324,7 +329,10 @@ public abstract class AbstractEntityLoader implements EntityLoader {
             CriteriaQuery<Long> query = criteriaBuilder.createQuery(Long.class);
             query.select(criteriaBuilder.count(query.from(usedClass)));
 
-            return entityManager.createQuery(criteriaQuery.where(getPredicates()));
+            return entityManager.createQuery(
+                    criteriaQuery.where(getPredicates())
+                            .orderBy(orders)
+            );
         }
 
         @Override
@@ -344,6 +352,15 @@ public abstract class AbstractEntityLoader implements EntityLoader {
         @Override
         public void setIdentifier(String idColumn, UUID identifier) {
             predicates.add(criteriaBuilder.equal(root.get(idColumn), identifier));
+        }
+
+        @Override
+        public void addOrderBy(String field, boolean ascending) {
+            if (ascending) {
+                orders.add(criteriaBuilder.asc(root.get(field)));
+            } else {
+                orders.add(criteriaBuilder.desc(root.get(field)));
+            }
         }
 
         private Predicate getPredicates() {

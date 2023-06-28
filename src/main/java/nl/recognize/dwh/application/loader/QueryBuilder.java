@@ -14,4 +14,6 @@ public interface QueryBuilder {
     void setIdentifier(String idColumn, UUID identifier);
 
     Long getCount();
+
+    void addOrderBy(String field, boolean ascending);
 }
