@@ -37,6 +37,11 @@ public interface EntityLoader {
      */
     void applyFilters(QueryBuilder queryBuilder, List<RequestFilter> filters);
 
+    /**
+     * Applies sorting
+     */
+    void applySorting(QueryBuilder queryBuilder);
+
     String getEntityType();
 
     List<Filter> getFilters();
