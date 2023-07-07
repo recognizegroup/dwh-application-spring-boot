@@ -157,7 +157,7 @@ public class DwhApiController {
                 .split("[\\[\\]]");
 
         if (tokens.length == 2) {
-            String value = URLDecoder.decode(urlEncodedValue, Charset.defaultCharset());
+            String value = urlEncodedValue;
             log.debug("Created filter: name '{}', operator '{}', value '{}'", tokens[0], tokens[1], value);
             return new RequestFilter(tokens[0], tokens[1], value);
         } else if (tokens.length == 3) {

@@ -13,6 +13,7 @@ import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.TypedQuery;
 import jakarta.persistence.criteria.*;
 import jakarta.transaction.Transactional;
+import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -33,6 +34,7 @@ public abstract class AbstractEntityLoader implements EntityLoader {
         QueryBuilder queryBuilder = createQueryBuilder();
 
         applyFilters(queryBuilder, listOptions.getFilters());
+        applySorting(queryBuilder);
 
         Long total = queryBuilder.getCount();
 
@@ -78,6 +80,15 @@ public abstract class AbstractEntityLoader implements EntityLoader {
         }
     }
 
+    @Override
+    public String getIdentifierType() {
+        return FieldMapping.TYPE_INTEGER;
+    }
+
+    public void applySorting(QueryBuilder queryBuilder) {
+        // no sorting by default
+    }
+
     /**
      * Returns an array of tuples that contain the request filter, and the defined filter
      */
@@ -113,6 +124,9 @@ public abstract class AbstractEntityLoader implements EntityLoader {
             case FieldMapping.TYPE_DATE_TIME:
                 value = ZonedDateTime.parse((String) value);
                 break;
+            case FieldMapping.TYPE_DATE_TIME_LOCAL:
+                value = LocalDateTime.parse((String) value);
+                break;
             case FieldMapping.TYPE_BOOLEAN:
                 value = Boolean.valueOf((String) value);
                 break;
@@ -141,6 +155,10 @@ public abstract class AbstractEntityLoader implements EntityLoader {
     }
 
     private Map<String, Object> mapEntity(Object entity, EntityMapping mapping, List<RequestFilter> usedFilters) {
+        if (entity == null) {
+            return null;
+        }
+
         Map<String, Object> result = new HashMap<>();
 
         entity = dataPipelineService.apply(entity, mapping.getTransformations());
@@ -173,9 +191,11 @@ public abstract class AbstractEntityLoader implements EntityLoader {
         Object value = this.dataPipelineService.apply(unprocessed, transformations);
         if (value instanceof ZonedDateTime) {
             value = ((ZonedDateTime) value).toOffsetDateTime().toString();
+        } else if (value instanceof LocalDateTime) {
+            value = ((LocalDateTime) value).toString();
         }
 
-        if (Arrays.asList(FieldMapping.TYPE_ENTITY, FieldMapping.TYPE_LIST).contains(type)) {
+        if (Arrays.asList(FieldMapping.TYPE_ENTITY, FieldMapping.TYPE_LIST, FieldMapping.TYPE_SET).contains(type)) {
             Mapping mapping = field.getEntryMapping();
 
             if (!(mapping instanceof EntityMapping) && !(mapping instanceof FieldMapping)) {
@@ -190,8 +210,18 @@ public abstract class AbstractEntityLoader implements EntityLoader {
                 return values.stream()
                         .map(aValue -> mapping instanceof EntityMapping
                                 ? mapEntity(aValue, (EntityMapping) mapping, usedFilters)
-                                : mapField(aValue, (FieldMapping) mapping, usedFilters)
+                                : aValue
                         ).collect(Collectors.toList());
+            } else if (type.equals(FieldMapping.TYPE_SET)) {
+                if (value == null) {
+                    return new HashSet<>();
+                }
+                Set<Object> values = (Set<Object>) value;
+                return values.stream()
+                        .map(aValue -> mapping instanceof EntityMapping
+                                ? mapEntity(aValue, (EntityMapping) mapping, usedFilters)
+                                : aValue
+                        ).collect(Collectors.toSet());
             } else {
                 return mapping instanceof EntityMapping
                         ? mapEntity(value, (EntityMapping) mapping, usedFilters)
@@ -217,6 +247,7 @@ public abstract class AbstractEntityLoader implements EntityLoader {
         private final Root<?> root;
         private final Class<?> usedClass;
         private final List<Predicate> predicates = new ArrayList<>();
+        private final List<Order> orders = new ArrayList<>();
 
         public QueryBuilderImpl(
         ) {
@@ -244,6 +275,8 @@ public abstract class AbstractEntityLoader implements EntityLoader {
                         predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get(baseFilter.getField()), (Long) value));
                     } else if (value instanceof ZonedDateTime) {
                         predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get(baseFilter.getField()), (ZonedDateTime) value));
+                    } else if (value instanceof LocalDateTime) {
+                        predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get(baseFilter.getField()), (LocalDateTime) value));
                     } else {
                         predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get(baseFilter.getField()), (String) value));
                     }
@@ -255,6 +288,8 @@ public abstract class AbstractEntityLoader implements EntityLoader {
                         predicates.add(criteriaBuilder.greaterThan(root.get(baseFilter.getField()), (Long) value));
                     } else if (value instanceof ZonedDateTime) {
                         predicates.add(criteriaBuilder.greaterThan(root.get(baseFilter.getField()), (ZonedDateTime) value));
+                    } else if (value instanceof LocalDateTime) {
+                        predicates.add(criteriaBuilder.greaterThan(root.get(baseFilter.getField()), (LocalDateTime) value));
                     } else {
                         predicates.add(criteriaBuilder.greaterThan(root.get(baseFilter.getField()), (String) value));
                     }
@@ -266,6 +301,8 @@ public abstract class AbstractEntityLoader implements EntityLoader {
                         predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get(baseFilter.getField()), (Long) value));
                     } else if (value instanceof ZonedDateTime) {
                         predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get(baseFilter.getField()), (ZonedDateTime) value));
+                    } else if (value instanceof LocalDateTime) {
+                        predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get(baseFilter.getField()), (LocalDateTime) value));
                     } else {
                         predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get(baseFilter.getField()), (String) value));
                     }
@@ -277,6 +314,8 @@ public abstract class AbstractEntityLoader implements EntityLoader {
                         predicates.add(criteriaBuilder.lessThan(root.get(baseFilter.getField()), (Long) value));
                     } else if (value instanceof ZonedDateTime) {
                         predicates.add(criteriaBuilder.lessThan(root.get(baseFilter.getField()), (ZonedDateTime) value));
+                    } else if (value instanceof LocalDateTime) {
+                        predicates.add(criteriaBuilder.lessThan(root.get(baseFilter.getField()), (LocalDateTime) value));
                     } else {
                         predicates.add(criteriaBuilder.lessThan(root.get(baseFilter.getField()), (String) value));
                     }
@@ -291,7 +330,10 @@ public abstract class AbstractEntityLoader implements EntityLoader {
             CriteriaQuery<Long> query = criteriaBuilder.createQuery(Long.class);
             query.select(criteriaBuilder.count(query.from(usedClass)));
 
-            return entityManager.createQuery(criteriaQuery.where(getPredicates()));
+            return entityManager.createQuery(
+                    criteriaQuery.where(getPredicates())
+                            .orderBy(orders)
+            );
         }
 
         @Override
@@ -306,6 +348,20 @@ public abstract class AbstractEntityLoader implements EntityLoader {
         @Override
         public void setIdentifier(String idColumn, String identifier) {
             predicates.add(criteriaBuilder.equal(root.get(idColumn), identifier));
+        }
+
+        @Override
+        public void setIdentifier(String idColumn, UUID identifier) {
+            predicates.add(criteriaBuilder.equal(root.get(idColumn), identifier));
+        }
+
+        @Override
+        public void addOrderBy(String field, boolean ascending) {
+            if (ascending) {
+                orders.add(criteriaBuilder.asc(root.get(field)));
+            } else {
+                orders.add(criteriaBuilder.desc(root.get(field)));
+            }
         }
 
         private Predicate getPredicates() {

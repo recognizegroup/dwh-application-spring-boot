@@ -7,6 +7,7 @@ import java.util.*;
 
 public class FieldMapping implements Mapping {
     public static final String TYPE_LIST = "list";
+    public static final String TYPE_SET = "set";
     public static final String TYPE_OBJECT = "object";
     public static final String TYPE_STRING = "string";
     public static final String TYPE_ENTITY = "entity";
@@ -14,7 +15,9 @@ public class FieldMapping implements Mapping {
     public static final String TYPE_NUMBER = "number";
     public static final String TYPE_BOOLEAN = "boolean";
     public static final String TYPE_DATE_TIME = "date-time";
+    public static final String TYPE_DATE_TIME_LOCAL = "date-time-local";
     public static final String TYPE_EMAIL = "email";
+    public static final String TYPE_UUID = "uuid";
 
     private final String name;
 
@@ -43,13 +46,21 @@ public class FieldMapping implements Mapping {
         this.mapping = mapping;
     }
 
-    public FieldMapping(String name, String type, EntityMapping mapping) {
+    public FieldMapping(String name, String type, Mapping mapping) {
         this.name = name;
         this.type = type;
         this.options = new HashMap<>();
         options.put("entry_mapping", mapping);
         this.transformations = Collections.emptyList();
         this.mapping = mapping;
+    }
+
+    public FieldMapping(String type) {
+        this.name = null;
+        this.type = type;
+        this.options = new HashMap<>();
+        this.transformations = Collections.emptyList();
+        this.mapping = null;
     }
 
     public String getSerializedName() {

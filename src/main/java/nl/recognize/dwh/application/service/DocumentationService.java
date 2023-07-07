@@ -70,7 +70,7 @@ public class DocumentationService {
             addArraySchema(pluralName, singularSchemaPath, components);
 
             paths.addPathItem("/" + type, createListPathItem(type, pluralSchemaPath, loader.getFilters()));
-            paths.addPathItem("/" + type + "/{id}", createDetailPathItem(type, singularSchemaPath, loader.getFilters()));
+            paths.addPathItem("/" + type + "/{id}", createDetailPathItem(type, singularSchemaPath, loader.getFilters(), loader.getIdentifierType()));
         }
 
         return new OpenAPI()
@@ -126,8 +126,10 @@ public class DocumentationService {
         }
     }
 
-    private PathItem createDetailPathItem(String type, String schemaPath, List<Filter> filters) {
+    private PathItem createDetailPathItem(String type, String schemaPath, List<Filter> filters, String identifierType) {
         List<Parameter> parameters = new ArrayList<>();
+        String idType = createOpenApiTypeFromFieldType(identifierType);
+
         parameters.add(
                 new Parameter()
                         .name("id")
@@ -135,7 +137,7 @@ public class DocumentationService {
                         .required(true)
                         .schema(
                                 new Schema<String>()
-                                        .type("integer")
+                                        .type(idType)
                         )
         );
 
@@ -179,10 +181,10 @@ public class DocumentationService {
             String serializedName = field.getSerializedName();
             String type = field.getType();
 
-            if (Arrays.asList(FieldMapping.TYPE_LIST, FieldMapping.TYPE_ENTITY).contains(type)) {
+            if (Arrays.asList(FieldMapping.TYPE_LIST, FieldMapping.TYPE_ENTITY, FieldMapping.TYPE_SET).contains(type)) {
                 String schemaName = StringUtils.capitalize(field.getName());
 
-                if (type.equals(FieldMapping.TYPE_LIST)) {
+                if (type.equals(FieldMapping.TYPE_LIST) || type.equals(FieldMapping.TYPE_SET)) {
                     List<String> splitNames = NameHelper.splitPluralName(schemaName);
                     if (splitNames.size() < 2) {
                         throw new IllegalStateException("Incorrect # of strings");
@@ -232,19 +234,20 @@ public class DocumentationService {
         return name;
     }
 
-    private Schema createField(String type) {
-        if (type == null) {
+    private Schema createField(String originalType) {
+        if (originalType == null) {
             return new Schema().description("Mixed type.");
         }
 
         String format = null;
+        String type = createOpenApiTypeFromFieldType(originalType);
 
-        if (type.equals(FieldMapping.TYPE_DATE_TIME)) {
-            type = FieldMapping.TYPE_STRING;
+        if (type.equals(FieldMapping.TYPE_DATE_TIME) || type.equals(FieldMapping.TYPE_DATE_TIME_LOCAL)) {
             format = FieldMapping.TYPE_DATE_TIME;
         } else if (type.equals(FieldMapping.TYPE_EMAIL)) {
-            type = FieldMapping.TYPE_STRING;
             format = FieldMapping.TYPE_EMAIL;
+        } else if (type.equals(FieldMapping.TYPE_UUID)) {
+            format = FieldMapping.TYPE_UUID;
         }
 
         if (format == null) {
@@ -252,6 +255,18 @@ public class DocumentationService {
         } else {
             return new Schema().type(type).format(format);
         }
+    }
+
+    private String createOpenApiTypeFromFieldType(String type) {
+        if (type.equals(FieldMapping.TYPE_DATE_TIME) || type.equals(FieldMapping.TYPE_DATE_TIME_LOCAL)) {
+            type = FieldMapping.TYPE_STRING;
+        } else if (type.equals(FieldMapping.TYPE_EMAIL)) {
+            type = FieldMapping.TYPE_STRING;
+        } else if (type.equals(FieldMapping.TYPE_UUID)) {
+            type = FieldMapping.TYPE_STRING;
+        }
+
+        return type;
     }
 
     private List<Parameter> createParametersForFilter(Filter filter) {
@@ -268,7 +283,7 @@ public class DocumentationService {
 
             String description = String.format("Filter field %s %s where the value is of type %s", filter.getQueryParameter(), operatorDescription, filter.getType());
 
-            if (filter.getType().equals(FieldMapping.TYPE_DATE_TIME)) {
+            if (filter.getType().equals(FieldMapping.TYPE_DATE_TIME) || filter.getType().equals(FieldMapping.TYPE_DATE_TIME_LOCAL)) {
                 description += " (in format of ISO8601)";
             }
 
