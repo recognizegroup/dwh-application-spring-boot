@@ -338,7 +338,6 @@ public abstract class AbstractEntityLoader implements EntityLoader {
 
         @Override
         public Long getCount() {
-            CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
             CriteriaQuery<Long> query = criteriaBuilder.createQuery(Long.class);
             query.select(criteriaBuilder.count((Expression<?>) query.from(usedClass).alias("entity")));
 
