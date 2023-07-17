@@ -241,22 +241,13 @@ public abstract class AbstractEntityLoader implements EntityLoader {
     }
 
     private class QueryBuilderImpl implements QueryBuilder {
-
-        private final CriteriaBuilder criteriaBuilder;
-        private final CriteriaQuery<Object> criteriaQuery;
-        private final Root<?> root;
         private final Class<?> usedClass;
-        private final List<Predicate> predicates = new ArrayList<>();
-        private final List<Order> orders = new ArrayList<>();
+        private final List<QueryBuilderPredicate<?>> predicates = new ArrayList<>();
+        private final List<QueryBuilderOrder> orders = new ArrayList<>();
 
         public QueryBuilderImpl(
         ) {
-            this.criteriaBuilder = entityManager.getCriteriaBuilder();
-            this.criteriaQuery = criteriaBuilder.createQuery();
-
             usedClass = getEntityClass();
-            this.root = (Root<?>) criteriaQuery.from(usedClass).alias("entity");
-            this.criteriaQuery.select(root);
         }
 
         @Override
@@ -266,59 +257,19 @@ public abstract class AbstractEntityLoader implements EntityLoader {
             }
             switch (operator) {
                 case Filter.OPERATOR_EQUAL:
-                    predicates.add(criteriaBuilder.equal(root.get(baseFilter.getField()), value));
+                    predicates.add(new QueryBuilderPredicate<>(baseFilter.getField(), value, QueryBuilderPredicate.Operator.EQUAL));
                     break;
                 case Filter.OPERATOR_GREATER_OR_EQUAL_THAN:
-                    if (value instanceof Integer) {
-                        predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get(baseFilter.getField()), (Integer) value));
-                    } else if (value instanceof Long) {
-                        predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get(baseFilter.getField()), (Long) value));
-                    } else if (value instanceof ZonedDateTime) {
-                        predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get(baseFilter.getField()), (ZonedDateTime) value));
-                    } else if (value instanceof LocalDateTime) {
-                        predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get(baseFilter.getField()), (LocalDateTime) value));
-                    } else {
-                        predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get(baseFilter.getField()), (String) value));
-                    }
+                    predicates.add(new QueryBuilderPredicate<>(baseFilter.getField(), value, QueryBuilderPredicate.Operator.GREATER_OR_EQUAL_THAN));
                     break;
                 case Filter.OPERATOR_GREATER_THAN:
-                    if (value instanceof Integer) {
-                        predicates.add(criteriaBuilder.greaterThan(root.get(baseFilter.getField()), (Integer) value));
-                    } else if (value instanceof Long) {
-                        predicates.add(criteriaBuilder.greaterThan(root.get(baseFilter.getField()), (Long) value));
-                    } else if (value instanceof ZonedDateTime) {
-                        predicates.add(criteriaBuilder.greaterThan(root.get(baseFilter.getField()), (ZonedDateTime) value));
-                    } else if (value instanceof LocalDateTime) {
-                        predicates.add(criteriaBuilder.greaterThan(root.get(baseFilter.getField()), (LocalDateTime) value));
-                    } else {
-                        predicates.add(criteriaBuilder.greaterThan(root.get(baseFilter.getField()), (String) value));
-                    }
+                    predicates.add(new QueryBuilderPredicate<>(baseFilter.getField(), value, QueryBuilderPredicate.Operator.GREATER_THAN));
                     break;
                 case Filter.OPERATOR_LESS_OR_EQUAL_THAN:
-                    if (value instanceof Integer) {
-                        predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get(baseFilter.getField()), (Integer) value));
-                    } else if (value instanceof Long) {
-                        predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get(baseFilter.getField()), (Long) value));
-                    } else if (value instanceof ZonedDateTime) {
-                        predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get(baseFilter.getField()), (ZonedDateTime) value));
-                    } else if (value instanceof LocalDateTime) {
-                        predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get(baseFilter.getField()), (LocalDateTime) value));
-                    } else {
-                        predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get(baseFilter.getField()), (String) value));
-                    }
+                    predicates.add(new QueryBuilderPredicate<>(baseFilter.getField(), value, QueryBuilderPredicate.Operator.LESS_OR_EQUAL_THAN));
                     break;
                 case Filter.OPERATOR_LESS_THAN:
-                    if (value instanceof Integer) {
-                        predicates.add(criteriaBuilder.lessThan(root.get(baseFilter.getField()), (Integer) value));
-                    } else if (value instanceof Long) {
-                        predicates.add(criteriaBuilder.lessThan(root.get(baseFilter.getField()), (Long) value));
-                    } else if (value instanceof ZonedDateTime) {
-                        predicates.add(criteriaBuilder.lessThan(root.get(baseFilter.getField()), (ZonedDateTime) value));
-                    } else if (value instanceof LocalDateTime) {
-                        predicates.add(criteriaBuilder.lessThan(root.get(baseFilter.getField()), (LocalDateTime) value));
-                    } else {
-                        predicates.add(criteriaBuilder.lessThan(root.get(baseFilter.getField()), (String) value));
-                    }
+                    predicates.add(new QueryBuilderPredicate<>(baseFilter.getField(), value, QueryBuilderPredicate.Operator.LESS_THAN));
                     break;
                 default:
                     throw new IllegalStateException("Unknown operator " + operator);
@@ -327,47 +278,144 @@ public abstract class AbstractEntityLoader implements EntityLoader {
 
         @Override
         public TypedQuery<Object> createQuery() {
-            CriteriaQuery<Long> query = criteriaBuilder.createQuery(Long.class);
-            query.select(criteriaBuilder.count(query.from(usedClass)));
+            CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
+            CriteriaQuery<Object> criteriaQuery = criteriaBuilder.createQuery();
+            Root<?> root = (Root<?>) criteriaQuery.from(usedClass).alias("entity");
+            criteriaQuery.select(root);
 
             return entityManager.createQuery(
-                    criteriaQuery.where(getPredicates())
-                            .orderBy(orders)
+                    criteriaQuery.where(this.buildRootPredicate(criteriaBuilder, root))
+                            .orderBy(this.buildOrders(criteriaBuilder, root))
             );
         }
 
         @Override
         public Long getCount() {
-            CriteriaQuery<Long> query = criteriaBuilder.createQuery(Long.class);
-            query.select(criteriaBuilder.count((Expression<?>) query.from(usedClass).alias("entity")));
+            CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
+            CriteriaQuery<Long> criteriaQuery = criteriaBuilder.createQuery(Long.class);
+            Root<?> root = (Root<?>) criteriaQuery.from(usedClass).alias("entity");
+            criteriaQuery.select(criteriaBuilder.count(root));
 
-            return entityManager.createQuery(query.where(getPredicates())).getSingleResult();
+            return entityManager.createQuery(
+                    criteriaQuery.where(this.buildRootPredicate(criteriaBuilder, root))
+            ).getSingleResult();
         }
 
         @Override
         public void setIdentifier(String idColumn, String identifier) {
-            predicates.add(criteriaBuilder.equal(root.get(idColumn), identifier));
+            predicates.add(
+                    new QueryBuilderPredicate<>(
+                            idColumn,
+                            identifier,
+                            QueryBuilderPredicate.Operator.EQUAL
+                    )
+            );
         }
 
         @Override
         public void setIdentifier(String idColumn, UUID identifier) {
-            predicates.add(criteriaBuilder.equal(root.get(idColumn), identifier));
+            predicates.add(
+                    new QueryBuilderPredicate<>(
+                            idColumn,
+                            identifier,
+                            QueryBuilderPredicate.Operator.EQUAL
+                    )
+            );
         }
 
         @Override
         public void addOrderBy(String field, boolean ascending) {
-            if (ascending) {
-                orders.add(criteriaBuilder.asc(root.get(field)));
-            } else {
-                orders.add(criteriaBuilder.desc(root.get(field)));
-            }
+            orders.add(
+                    new QueryBuilderOrder(
+                            field,
+                            ascending
+                    )
+            );
         }
 
-        private Predicate getPredicates() {
-            // build predicate list - conjuction starts us with an empty 'and' predicate
+        private List<Order> buildOrders(CriteriaBuilder criteriaBuilder, Root<?> root) {
+            List<Order> orders = new ArrayList<>();
+
+            for (QueryBuilderOrder order : this.orders) {
+                if (order.isAscending()) {
+                    orders.add(criteriaBuilder.asc(root.get(order.getField())));
+                } else {
+                    orders.add(criteriaBuilder.desc(root.get(order.getField())));
+                }
+            }
+
+            return orders;
+        }
+
+        private Predicate buildRootPredicate(CriteriaBuilder criteriaBuilder, Root<?> root) {
             Predicate rootPredicate = criteriaBuilder.conjunction();
-            for (Predicate predicate : predicates) {
-                rootPredicate = criteriaBuilder.and(rootPredicate, predicate);
+            for (QueryBuilderPredicate<?> predicate : predicates) {
+                Object value = predicate.getValue();
+                String field = predicate.getField();
+
+                Predicate result;
+
+                switch (predicate.getOperator()) {
+                    case EQUAL:
+                        result = criteriaBuilder.equal(root.get(field), value);
+                        break;
+                    case GREATER_OR_EQUAL_THAN:
+                        if (value instanceof Integer) {
+                            result = criteriaBuilder.greaterThanOrEqualTo(root.get(field), (Integer) value);
+                        } else if (value instanceof Long) {
+                            result = criteriaBuilder.greaterThanOrEqualTo(root.get(field), (Long) value);
+                        } else if (value instanceof ZonedDateTime) {
+                            result = criteriaBuilder.greaterThanOrEqualTo(root.get(field), (ZonedDateTime) value);
+                        } else if (value instanceof LocalDateTime) {
+                            result = criteriaBuilder.greaterThanOrEqualTo(root.get(field), (LocalDateTime) value);
+                        } else {
+                            result = criteriaBuilder.greaterThanOrEqualTo(root.get(field), (String) value);
+                        }
+                        break;
+                    case GREATER_THAN:
+                        if (value instanceof Integer) {
+                            result = criteriaBuilder.greaterThan(root.get(field), (Integer) value);
+                        } else if (value instanceof Long) {
+                            result = criteriaBuilder.greaterThan(root.get(field), (Long) value);
+                        } else if (value instanceof ZonedDateTime) {
+                            result = criteriaBuilder.greaterThan(root.get(field), (ZonedDateTime) value);
+                        } else if (value instanceof LocalDateTime) {
+                            result = criteriaBuilder.greaterThan(root.get(field), (LocalDateTime) value);
+                        } else {
+                            result = criteriaBuilder.greaterThan(root.get(field), (String) value);
+                        }
+                        break;
+                    case LESS_OR_EQUAL_THAN:
+                        if (value instanceof Integer) {
+                            result = criteriaBuilder.lessThanOrEqualTo(root.get(field), (Integer) value);
+                        } else if (value instanceof Long) {
+                            result = criteriaBuilder.lessThanOrEqualTo(root.get(field), (Long) value);
+                        } else if (value instanceof ZonedDateTime) {
+                            result = criteriaBuilder.lessThanOrEqualTo(root.get(field), (ZonedDateTime) value);
+                        } else if (value instanceof LocalDateTime) {
+                            result = criteriaBuilder.lessThanOrEqualTo(root.get(field), (LocalDateTime) value);
+                        } else {
+                            result = criteriaBuilder.lessThanOrEqualTo(root.get(field), (String) value);
+                        }
+                        break;
+                    case LESS_THAN:
+                        if (value instanceof Integer) {
+                            result = criteriaBuilder.lessThan(root.get(field), (Integer) value);
+                        } else if (value instanceof Long) {
+                            result = criteriaBuilder.lessThan(root.get(field), (Long) value);
+                        } else if (value instanceof ZonedDateTime) {
+                            result = criteriaBuilder.lessThan(root.get(field), (ZonedDateTime) value);
+                        } else if (value instanceof LocalDateTime) {
+                            result = criteriaBuilder.lessThan(root.get(field), (LocalDateTime) value);
+                        } else {
+                            result = criteriaBuilder.lessThan(root.get(field), (String) value);
+                        }
+                        break;
+                    default:
+                        throw new IllegalStateException("Unknown operator " + predicate.getOperator());
+                }
+
+                rootPredicate = criteriaBuilder.and(rootPredicate, result);
             }
 
             return rootPredicate;
