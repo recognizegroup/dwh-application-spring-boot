@@ -37,7 +37,7 @@ publishing {
         maven(MavenPublication) {
             groupId = 'nl.recognize.dwh'
             artifactId = 'dwh-application-spring-boot'
-            version = '2.1.2'
+            version = '2.1.3'
 
             from components.java
         }
