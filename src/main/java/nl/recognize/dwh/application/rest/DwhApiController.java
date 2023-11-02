@@ -53,7 +53,7 @@ public class DwhApiController {
     }
 
     @GetMapping(path = "/{type}")
-    @RolesAllowed(Role.ROLE_DWH_BRIDGE)
+    @RolesAllowed(Role.DWH_BRIDGE)
     public ResponseEntity<ProtocolResponse<List<Map<String, Object>>>> getList(
             @PathVariable("type") String type,
             @RequestParam(PAGE_PARAMETER) Optional<Integer> pageParameter,
@@ -77,7 +77,7 @@ public class DwhApiController {
     }
 
     @GetMapping(path = "/{type}/{id}")
-    @RolesAllowed(Role.ROLE_DWH_BRIDGE)
+    @RolesAllowed(Role.DWH_BRIDGE)
     public Object getDetails(
             @PathVariable("type") String type,
             @PathVariable("id") String id,
